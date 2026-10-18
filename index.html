@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PPA Tour 3D Pickleball Simulator & Interactive USAPA Rule Trainer</title>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <!-- Full-Screen 3D WebGL Canvas -->
+  <canvas id="game-canvas" aria-label="3D Pickleball Court Simulation"></canvas>
+
+  <!-- Floating 3D Player Name, Role & Human Emotion Speech Bubbles -->
+  <div id="player-labels-layer" class="player-labels-layer"></div>
+
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" class="loading-overlay">
+    <div class="loader-card">
+      <div class="loader-spinner"></div>
+      <h1>PPA TOUR 3D PICKLEBALL</h1>
+      <p id="loading-status">Loading Lifelike Human Athletes, Facial Emotions, 40-Hole Ball & Outdoor Stadium...</p>
+    </div>
+  </div>
+
+  <!-- TOP BROADCAST BAR -->
+  <header class="broadcast-top">
+    <!-- TOP-LEFT: Authentic ESPN / PPA Tour TV Scorebug -->
+    <div class="tv-scorebug">
+      <div class="scorebug-header">
+        <span class="live-dot"></span>
+        <span class="tour-title">PPA INDIA OPEN • CENTER COURT</span>
+        <span id="server-badge" class="srv-context">Server #2 • Right (Even)</span>
+      </div>
+
+      <div class="scorebug-body">
+        <div class="team-rows">
+          <div class="team-row active-srv" id="team-row-0">
+            <span class="team-color-bar india-blue"></span>
+            <span class="srv-ball-indicator" id="srv-dot-0" title="Serving Team">●</span>
+            <span class="team-tag" id="team-name-0">ARJUN / PRIYA (YOU)</span>
+            <span id="score-team0" class="score-num">0</span>
+          </div>
+          <div class="team-row" id="team-row-1">
+            <span class="team-color-bar coral-red"></span>
+            <span class="srv-ball-indicator" id="srv-dot-1" title="Serving Team">●</span>
+            <span class="team-tag" id="team-name-1">VIKRAM / ANANYA (AI)</span>
+            <span id="score-team1" class="score-num">0</span>
+          </div>
+        </div>
+
+        <div class="usapa-call-box">
+          <span class="call-caption">USAPA CALL</span>
+          <strong id="score-call" class="score-call-big">0 - 0 - 2</strong>
+        </div>
+      </div>
+
+      <div id="double-bounce-status" class="rule-status-strip neutral">
+        Awaiting Legal Underhand Serve
+      </div>
+    </div>
+
+    <!-- TOP-CENTER: Sleek Mode Switcher, Camera Angles & Utility Bar -->
+    <div class="top-center-deck">
+      <nav class="mode-tabs" aria-label="Game Modes">
+        <button type="button" class="mode-btn active" data-mode-btn="training">
+          🎓 Training Coach
+        </button>
+        <button type="button" class="mode-btn" data-mode-btn="singles">
+          ⚡ Singles (1v1)
+        </button>
+        <button type="button" class="mode-btn" data-mode-btn="doubles">
+          🏆 Doubles (2v2)
+        </button>
+      </nav>
+
+      <div class="camera-and-tools-bar">
+        <div class="cam-pills" role="group" aria-label="Camera Views">
+          <button type="button" class="cam-pill active" data-cam-btn="broadcast" title="TV Broadcast View">🎥 Broadcast</button>
+          <button type="button" class="cam-pill" data-cam-btn="player" title="Near Baseline Player POV">🏃 Player POV</button>
+          <button type="button" class="cam-pill" data-cam-btn="kitchen" title="Non-Volley Zone Net Angle">🕸️ Kitchen</button>
+          <button type="button" class="cam-pill" data-cam-btn="overhead" title="20x44ft Overhead Tactical View">🦅 Overhead</button>
+          <button type="button" class="cam-pill" data-cam-btn="closeup" title="Close-up Human Face & Emotion View">😊 Face Cam</button>
+        </div>
+
+        <div class="util-pills">
+          <button type="button" id="btn-toggle-lab" class="util-pill">
+            🎛️ Spin &amp; Angle Lab
+          </button>
+          <button type="button" id="btn-toggle-audio" class="util-pill active">
+            🔊 Audio: ON
+          </button>
+          <button type="button" id="btn-open-rules" class="util-pill highlight">
+            📖 USAPA Rules
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOP-RIGHT: Live 3D Human Emotion Reaction Cam (PiP) + Hawkeye Shot Radar -->
+    <div class="top-right-broadcast">
+      <div class="emotion-pip-card">
+        <div class="pip-header">
+          <span class="pip-title">😊 LIVE HUMAN EMOTION CAM</span>
+          <strong id="hud-face-state" class="pip-emotion-badge">😐 Calm &amp; Focused</strong>
+        </div>
+        <!-- WebGL Scissor Viewport renders live 3D close-up face & upper body right inside this box! -->
+        <div id="emotion-cam-frame" class="emotion-cam-viewport">
+          <div class="pip-overlay-bottom">
+            <span id="hud-anim-state" class="pip-anim-tag">Idle SplitStep</span>
+          </div>
+        </div>
+        <div class="pip-emotion-triggers">
+          <button type="button" class="emo-btn" data-expr-btn="Celebration" title="Trigger Joyful Smile & Fist Pump">😄 Celebrate</button>
+          <button type="button" class="emo-btn" data-expr-btn="Frustration" title="Trigger Frustrated Scowl & Slump">😤 Upset</button>
+          <button type="button" class="emo-btn" data-expr-btn="Effort" title="Trigger Power Grit Expression">🔥 Effort</button>
+          <button type="button" class="emo-btn" data-expr-btn="Surprise" title="Trigger Surprised Gasp">😮 Surprise</button>
+        </div>
+      </div>
+
+      <!-- Compact Hawkeye Shot Radar -->
+      <div class="hawkeye-radar-card">
+        <div class="radar-header">
+          <span>📡 HAWKEYE SHOT RADAR</span>
+          <strong id="tel-shot" class="radar-shot-type">Ready</strong>
+        </div>
+        <div class="radar-grid">
+          <div class="radar-metric">
+            <span class="rm-label">SPEED</span>
+            <strong id="tel-speed" class="rm-val">0 mph</strong>
+          </div>
+          <div class="radar-metric">
+            <span class="rm-label">SPIN (MAGNUS)</span>
+            <strong id="tel-spin" class="rm-val">0 RPM</strong>
+          </div>
+          <div class="radar-metric">
+            <span class="rm-label">NET CLEARANCE</span>
+            <strong id="tel-net" class="rm-val">+25 cm</strong>
+          </div>
+          <div class="radar-metric">
+            <span class="rm-label">PADDLE FACE</span>
+            <strong id="tel-angles" class="rm-val">0° • 0° • 0°</strong>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- CENTER CALLOUT BANNER (Referee Callouts, Winners, Faults) -->
+  <div id="callout-banner" class="callout-banner info" role="status" aria-live="polite">
+    <div id="callout-title" class="callout-title">Welcome to PPA Tour 3D Pickleball</div>
+    <div id="callout-detail" class="callout-detail">Move mouse on court to aim • Hold &amp; release SPACE or Left-Click to Serve &amp; Strike</div>
+  </div>
+
+  <!-- LEFT COACH CLIPBOARD (Visible in Training Mode) -->
+  <aside class="hud-left">
+    <section id="training-panel" class="coach-card">
+      <div class="coach-header">
+        <span class="badge-tag">🎓 INTERACTIVE USAPA COACH</span>
+        <span id="lesson-progress" class="progress-pill">0 / 3 Completed</span>
+      </div>
+      <div class="lesson-steps">
+        <button type="button" class="step-btn active" data-lesson-idx="0">1. Kitchen</button>
+        <button type="button" class="step-btn" data-lesson-idx="1">2. Serve</button>
+        <button type="button" class="step-btn" data-lesson-idx="2">3. 2-Bounce</button>
+        <button type="button" class="step-btn" data-lesson-idx="3">4. Scoring</button>
+        <button type="button" class="step-btn" data-lesson-idx="4">5. Spin Lab</button>
+      </div>
+      <h2 id="lesson-title" class="lesson-title">1. The Non-Volley Zone ("The Kitchen")</h2>
+      <div id="lesson-subtitle" class="lesson-subtitle">7-Foot No-Volley Zone &amp; Crosscourt Dink Mastery</div>
+      <p id="lesson-summary" class="lesson-text">
+        The 7-foot zone on each side of the net is the Non-Volley Zone (The Kitchen). You may NEVER volley a ball out of the air while touching the Kitchen or its 2-inch line.
+      </p>
+      <div class="coach-tip-box">
+        <strong>🎯 Drill Goal:</strong>
+        <span id="lesson-tip">Let the ball bounce and hit 3 soft Crosscourt Dinks into the opponent's Kitchen!</span>
+      </div>
+    </section>
+  </aside>
+
+  <!-- COLLAPSIBLE PRO PADDLE CONTACT ANGLES & AERODYNAMICS DRAWER -->
+  <aside id="paddle-lab-drawer" class="hud-right drawer-collapsed">
+    <section class="pro-lab-card">
+      <div class="lab-header">
+        <span>🏓 PADDLE CONTACT ANGLES &amp; 40-HOLE LAB</span>
+        <button type="button" id="btn-close-lab" class="lab-close-btn" aria-label="Close Lab">✕</button>
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-label">
+          <span>Face Pitch Tilt (<kbd>Q</kbd> / <kbd>E</kbd>)</span>
+          <strong id="val-pitch">0°</strong>
+        </div>
+        <input type="range" id="slider-pitch" min="-15" max="20" value="0" step="1" />
+        <div class="slider-sub">Closed (-15° Drive) ↔ Open (+20° Lofted Dink/Drop)</div>
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-label">
+          <span>Crosscourt Yaw (<kbd>Z</kbd> / <kbd>C</kbd>)</span>
+          <strong id="val-yaw">0°</strong>
+        </div>
+        <input type="range" id="slider-yaw" min="-25" max="25" value="0" step="1" />
+        <div class="slider-sub">Inside-Out Left (-25°) ↔ Crosscourt Right (+25°)</div>
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-label">
+          <span>Swing Brush Spin (<kbd>R</kbd> / <kbd>F</kbd>)</span>
+          <strong id="val-brush">0°</strong>
+        </div>
+        <input type="range" id="slider-brush" min="-25" max="25" value="0" step="1" />
+        <div class="slider-sub">Backspin Slice (-25°) ↔ Heavy Topspin (+25°)</div>
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-label">
+          <span>Strike Power (Hold <kbd>SPACE</kbd>)</span>
+          <strong id="val-power">78%</strong>
+        </div>
+        <input type="range" id="slider-power" min="35" max="100" value="78" step="1" />
+      </div>
+
+      <div class="slider-group">
+        <div class="slider-label">
+          <span>40-Hole Outdoor Crosswind</span>
+          <strong id="val-wind">0 m/s</strong>
+        </div>
+        <input type="range" id="slider-wind" min="-4.5" max="4.5" value="0" step="0.5" />
+      </div>
+
+      <div class="settings-grid">
+        <select id="select-paddle-core" aria-label="Paddle Core Material">
+          <option value="carbon16">T700 Raw Carbon (16mm Honeycomb)</option>
+          <option value="graphite14">Pro Graphite Face (14mm Core)</option>
+        </select>
+        <select id="select-ai-difficulty" aria-label="AI Difficulty">
+          <option value="club">AI: Club (3.5 DUPR)</option>
+          <option value="pro" selected>AI: Pro Tour (5.0 DUPR)</option>
+          <option value="championship">AI: Championship (6.5+ DUPR)</option>
+        </select>
+      </div>
+
+      <div class="lab-toggles">
+        <button type="button" id="btn-toggle-guides" class="mini-btn active">3D Guides: ON</button>
+        <button type="button" id="btn-toggle-footwork" class="mini-btn active">Footwork: Auto-Assist</button>
+      </div>
+
+      <div class="lab-anim-row">
+        <button type="button" class="mini-btn" data-anim-btn="Serve_Underhand">Serve Anim</button>
+        <button type="button" class="mini-btn" data-anim-btn="Dink_Crosscourt">Dink Anim</button>
+        <button type="button" class="mini-btn" data-anim-btn="Smash_Overhead">Smash Anim</button>
+      </div>
+    </section>
+  </aside>
+
+  <!-- BOTTOM HUD: ON-SCREEN KEY GUIDE, VISUAL KEYCAPS & SHOT BAR -->
+  <footer class="hud-bottom">
+    <!-- 1. Dynamic Contextual Prompt: Always tells the player exactly what keys to press right now! -->
+    <div id="live-key-prompt" class="live-key-prompt">
+      <span class="prompt-badge" id="prompt-phase-badge">READY TO SERVE</span>
+      <span class="prompt-text" id="prompt-action-text">
+        Move <strong>Mouse</strong> to aim in the green service box • Hold &amp; release <kbd class="inline-kbd pulse">SPACE</kbd> or <kbd class="inline-kbd">Left-Click</kbd> to hit Underhand Serve!
+      </span>
+    </div>
+
+    <!-- 2. Interactive Visual Keycap Deck & Shot Selector -->
+    <div class="controls-and-shots-deck">
+      <!-- Visual WASD Footwork Keycaps -->
+      <div class="keycap-cluster" title="Use WASD or Arrow Keys to move on court">
+        <div class="cluster-label">MOVE FOOTWORK</div>
+        <div class="wasd-grid">
+          <div class="keycap-spacer"></div>
+          <kbd class="keycap" data-keycap="KeyW">W</kbd>
+          <div class="keycap-spacer"></div>
+          <kbd class="keycap" data-keycap="KeyA">A</kbd>
+          <kbd class="keycap" data-keycap="KeyS">S</kbd>
+          <kbd class="keycap" data-keycap="KeyD">D</kbd>
+        </div>
+      </div>
+
+      <!-- Shot Archetype Hotkeys 1 - 6 -->
+      <div class="shot-bar" role="group" aria-label="Shot Selection Keys 1 to 6">
+        <button type="button" class="shot-pill active" data-shot-btn="drive" data-keycap="Digit1">
+          <span class="rec-tag" id="rec-drive">RECOMMENDED</span>
+          <kbd class="shot-kbd">1</kbd>
+          <div class="shot-info">
+            <strong>Drive / Serve</strong>
+            <span>Topspin Baseline</span>
+          </div>
+        </button>
+
+        <button type="button" class="shot-pill" data-shot-btn="dink" data-keycap="Digit2">
+          <span class="rec-tag" id="rec-dink">RECOMMENDED</span>
+          <kbd class="shot-kbd">2</kbd>
+          <div class="shot-info">
+            <strong>Kitchen Dink</strong>
+            <span>Soft NVZ Arc</span>
+          </div>
+        </button>
+
+        <button type="button" class="shot-pill" data-shot-btn="drop" data-keycap="Digit3">
+          <span class="rec-tag" id="rec-drop">RECOMMENDED</span>
+          <kbd class="shot-kbd">3</kbd>
+          <div class="shot-info">
+            <strong>3rd-Shot Drop</strong>
+            <span>Transition Arc</span>
+          </div>
+        </button>
+
+        <button type="button" class="shot-pill" data-shot-btn="volley" data-keycap="Digit4">
+          <span class="rec-tag" id="rec-volley">RECOMMENDED</span>
+          <kbd class="shot-kbd">4</kbd>
+          <div class="shot-info">
+            <strong>Punch Volley</strong>
+            <span>Fast Net Reflex</span>
+          </div>
+        </button>
+
+        <button type="button" class="shot-pill" data-shot-btn="smash" data-keycap="Digit5">
+          <span class="rec-tag" id="rec-smash">RECOMMENDED</span>
+          <kbd class="shot-kbd">5</kbd>
+          <div class="shot-info">
+            <strong>Overhead Smash</strong>
+            <span>Put-Away Winner</span>
+          </div>
+        </button>
+
+        <button type="button" class="shot-pill" data-shot-btn="slice" data-keycap="Digit6">
+          <span class="rec-tag" id="rec-slice">RECOMMENDED</span>
+          <kbd class="shot-kbd">6</kbd>
+          <div class="shot-info">
+            <strong>Backspin Slice</strong>
+            <span>Low Skid Cut</span>
+          </div>
+        </button>
+      </div>
+
+      <!-- Primary Strike Action Keycap (SPACE / Left-Click) with Live Power Meter -->
+      <button type="button" id="btn-onscreen-swing" class="strike-keycap-box" data-keycap="Space" title="Hold and release SPACE or Left-Click to swing paddle">
+        <div class="strike-keycap-top">
+          <kbd class="space-kbd">SPACE</kbd>
+          <span class="or-sep">or</span>
+          <kbd class="mouse-kbd">🖱️ CLICK</kbd>
+        </div>
+        <div class="strike-meter-track">
+          <div id="space-charge-fill" class="strike-meter-fill" style="width: 78%;"></div>
+        </div>
+        <div class="strike-caption" id="strike-btn-caption">HOLD &amp; RELEASE TO SERVE / HIT</div>
+      </button>
+
+      <!-- Spin & Paddle Angle Hotkeys -->
+      <div class="spin-keys-cluster">
+        <div class="cluster-label">PADDLE SHAPING</div>
+        <div class="spin-key-row">
+          <kbd class="keycap sm" data-keycap="KeyQ" title="Close Paddle Face (-Pitch)">Q</kbd>
+          <kbd class="keycap sm" data-keycap="KeyE" title="Open Paddle Face (+Loft)">E</kbd>
+          <span>Tilt</span>
+        </div>
+        <div class="spin-key-row">
+          <kbd class="keycap sm" data-keycap="KeyR" title="More Topspin Brush">R</kbd>
+          <kbd class="keycap sm" data-keycap="KeyF" title="More Backspin Slice">F</kbd>
+          <span>Spin</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- USAPA RULES & CONTROLS MODAL DIALOG (Uses declarative closedby="any" + JS fallback) -->
+  <dialog id="rules-modal" closedby="any" aria-labelledby="rules-modal-title">
+    <form method="dialog" class="modal-content">
+      <div class="modal-header">
+        <h2 id="rules-modal-title">📖 Official USAPA Pickleball Rules &amp; On-Screen Controls</h2>
+        <button type="submit" class="modal-close-btn" aria-label="Close Dialog">✕</button>
+      </div>
+      <div class="modal-grid">
+        <div class="modal-card">
+          <h3>1. The Non-Volley Zone ("The Kitchen")</h3>
+          <p>
+            The <strong>7-foot zone</strong> on both sides of the net is the Non-Volley Zone. Players may never hit a volley (a ball out of the air before it bounces) while touching the Kitchen or its 2-inch boundary lines—including via momentum after contact. You <em>may</em> step into the Kitchen at any time to hit a ball that has bounced.
+          </p>
+        </div>
+        <div class="modal-card">
+          <h3>2. The Double-Bounce (Two-Bounce) Rule</h3>
+          <p>
+            Every rally requires <strong>two mandatory bounces</strong> before volleying begins: (1) The receiver must let the serve bounce once in their service box, and (2) the serving team must let the return of serve bounce once on their side. Use key <strong>[3] 3rd-Shot Drop</strong> after Bounce #2 to safely advance to the Kitchen line!
+          </p>
+        </div>
+        <div class="modal-card">
+          <h3>3. Legal Underhand Serve</h3>
+          <p>
+            Serves must be struck <strong>underhand</strong> with an upward pendulum arc, paddle contact below the waist (navel), and the paddle head below the wrist. The serve must clear the Kitchen (including the NVZ line) and land in the diagonal crosscourt service box.
+          </p>
+        </div>
+        <div class="modal-card">
+          <h3>4. Side-Out Scoring &amp; Doubles (0-0-2)</h3>
+          <p>
+            Only the serving team can score points (games to 11, win by 2). In Doubles, the score has 3 numbers: <em>Serving Team – Receiving Team – Server # (1 or 2)</em>. Matches start at <strong>0-0-2</strong> so the first lost rally triggers an immediate Side-Out. On points won, serving partners switch Left/Right sides.
+          </p>
+        </div>
+      </div>
+      <div class="controls-summary">
+        <strong>Keyboard &amp; Mouse Guide:</strong> Move <strong>Mouse</strong> on court to aim • Hold &amp; release <strong>SPACE</strong> or <strong>Left-Click</strong> to Serve/Strike • Press <strong>1–6</strong> to select Shot Type (highlighted automatically with <em>RECOMMENDED</em>) • <strong>WASD / Arrow Keys</strong> for Footwork • <strong>Right-Click Drag</strong> to orbit 3D camera • <strong>Q/E, Z/C, R/F</strong> shape Paddle Tilt, Angle &amp; Spin.
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="primary-btn">Got It — Back to Center Court</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
