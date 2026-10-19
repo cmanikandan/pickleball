@@ -67,19 +67,19 @@ class PickleballSimulationApp {
 
   initScene() {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x9bd2f5);
-    this.scene.fog = new THREE.FogExp2(0xcbe7fb, 0.0065);
+    this.scene.background = new THREE.Color(0x8ec5f0);
+    this.scene.fog = new THREE.FogExp2(0xd6e8f7, 0.0042);
 
     this.camera = new THREE.PerspectiveCamera(
-      45,
+      43,
       window.innerWidth / window.innerHeight,
       0.1,
-      260
+      280
     );
-    this.camera.position.set(0, 6.4, 12.6);
+    this.camera.position.set(0, 7.2, 13.9);
 
     // Secondary Portrait Camera for the Top-Right "Live 3D Human Emotion Cam" (PiP)
-    this.faceCamera = new THREE.PerspectiveCamera(25, 2.0, 0.08, 40);
+    this.faceCamera = new THREE.PerspectiveCamera(24, 2.0, 0.08, 40);
 
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
@@ -91,16 +91,19 @@ class PickleballSimulationApp {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.12;
+    this.renderer.toneMappingExposure = 1.06;
     this.renderer.autoClear = false;
+
+    // Generate Realistic Outdoor Stadium PMREM Environment Map for PBR Reflections
+    this.buildOutdoorEnvironmentMap();
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.08;
     this.controls.maxPolarAngle = Math.PI * 0.485;
     this.controls.minDistance = 1.2;
-    this.controls.maxDistance = 34;
-    this.controls.target.set(0, 0.7, 0);
+    this.controls.maxDistance = 36;
+    this.controls.target.set(0, 0.25, 0.45);
     // Right-click drag orbits camera so Left-click is dedicated to paddle strikes!
     this.controls.mouseButtons = {
       LEFT: null,
@@ -109,31 +112,34 @@ class PickleballSimulationApp {
     };
 
     // Realistic Outdoor Sunlit Daylight + Golden-Hour Stadium Lighting
-    const hemiLight = new THREE.HemisphereLight(0xeef8ff, 0x5c7a52, 1.15);
+    const hemiLight = new THREE.HemisphereLight(0xf0f7ff, 0x4b6344, 0.95);
     this.scene.add(hemiLight);
 
-    const sunLight = new THREE.DirectionalLight(0xfff6e5, 2.35);
-    sunLight.position.set(14.0, 22.0, 14.0);
+    const sunLight = new THREE.DirectionalLight(0xfff4e0, 2.45);
+    sunLight.position.set(16.0, 24.0, 14.0);
     sunLight.castShadow = true;
-    sunLight.shadow.mapSize.set(2048, 2048);
+    sunLight.shadow.mapSize.set(4096, 4096);
     sunLight.shadow.camera.near = 1;
-    sunLight.shadow.camera.far = 55;
-    const d = 14.0;
+    sunLight.shadow.camera.far = 65;
+    const d = 16.5;
     sunLight.shadow.camera.left = -d;
     sunLight.shadow.camera.right = d;
+    sunLight.shadow.shadowBias = -0.0003;
     sunLight.shadow.camera.top = d;
     sunLight.shadow.camera.bottom = -d;
-    sunLight.shadow.bias = -0.0004;
+    sunLight.shadow.bias = -0.0003;
     this.scene.add(sunLight);
 
-    // Soft warm bounce light on faces so facial emotions are crystal clear from every angle
-    const faceFillNear = new THREE.DirectionalLight(0xffe8d6, 0.65);
-    faceFillNear.position.set(0, 4.5, -10.0);
-    const faceFillFar = new THREE.DirectionalLight(0xffe8d6, 0.65);
-    faceFillFar.position.set(0, 4.5, 10.0);
-    this.scene.add(faceFillNear, faceFillFar);
+    // Subtle cool sky rim light + warm court bounce fill light on athletes
+    const rimLight = new THREE.DirectionalLight(0xdbeafe, 0.65);
+    rimLight.position.set(-14.0, 12.0, -14.0);
+    const faceFillNear = new THREE.DirectionalLight(0xfff1e0, 1.35);
+    faceFillNear.position.set(2.5, 5.2, -12.0);
+    const faceFillFar = new THREE.DirectionalLight(0xfff1e0, 0.85);
+    faceFillFar.position.set(-2.5, 5.2, 12.0);
+    this.scene.add(rimLight, faceFillNear, faceFillFar);
 
-    // Build Photorealistic Outdoor Pickleball Stadium, Sky Dome, Windscreens, Grandstands & Trees
+    // Build Photorealistic Championship Pickleball Stadium, Covered Grandstands & Grounds
     this.buildRealisticOutdoorStadium();
 
     // 3D Court Overlays (Kitchen, Service Box, Trajectory, Bounce Rings)
@@ -147,27 +153,76 @@ class PickleballSimulationApp {
   }
 
   /**
-   * Builds a realistic real-world outdoor pickleball tournament stadium:
-   * - Atmospheric Sky Dome with Sun & Cumulus Clouds
-   * - Lush Country-Club Park Grounds & Walkways
-   * - 360° Dark-Green USAPA Windscreens with Sponsor Banners
-   * - Sideline Spectator Bleachers with 3D Cheering Crowd
-   * - Umpire High Chair, Shaded Player Canopies, Trees & Floodlight Towers
+   * Generates a procedural HDR-style outdoor sky/court PMREM environment map
+   * so carbon-fiber paddles, stadium glass/steel, and acrylic court surfaces have natural specular sheen.
+   */
+  buildOutdoorEnvironmentMap() {
+    try {
+      const pmrem = new THREE.PMREMGenerator(this.renderer);
+      pmrem.compileEquirectangularShader();
+      const envScene = new THREE.Scene();
+      const skyDome = new THREE.Mesh(
+        new THREE.SphereGeometry(50, 32, 16),
+        new THREE.ShaderMaterial({
+          side: THREE.BackSide,
+          vertexShader: `
+            varying vec3 vPos;
+            void main() {
+              vPos = position;
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+          `,
+          fragmentShader: `
+            varying vec3 vPos;
+            void main() {
+              vec3 d = normalize(vPos);
+              vec3 ground = vec3(0.14, 0.28, 0.22);
+              vec3 horizon = vec3(0.88, 0.92, 0.96);
+              vec3 zenith = vec3(0.18, 0.42, 0.78);
+              vec3 col = d.y < 0.0
+                ? mix(horizon, ground, clamp(-d.y * 3.0, 0.0, 1.0))
+                : mix(horizon, zenith, pow(d.y, 0.55));
+              vec3 sunDir = normalize(vec3(0.45, 0.62, 0.42));
+              float sun = max(dot(d, sunDir), 0.0);
+              col += vec3(1.0, 0.92, 0.76) * pow(sun, 24.0) * 1.4;
+              gl_FragColor = vec4(col, 1.0);
+            }
+          `,
+        })
+      );
+      envScene.add(skyDome);
+      const envRT = pmrem.fromScene(envScene, 0.03);
+      this.scene.environment = envRT.texture;
+      this.scene.environmentIntensity = 0.65;
+      pmrem.dispose();
+    } catch (_) {
+      // Fallback if PMREM fails
+    }
+  }
+
+  /**
+   * Builds a Pro Broadcast Championship Pickleball Stadium (PPA Tour / US Open Center Court):
+   * - Volumetric-style Cumulus Cloud Sky Dome Shader
+   * - Architectural Concourse Pavers & Manicured Championship Grounds
+   * - 360° Perimeter Barrier Walls with High-Res LED Sponsor Ribbon Boards
+   * - Covered East & West Grandstand Pavilions with Cantilevered Roofs, Glass Railings, Bucket Seats & Articulated Seated Spectators
+   * - Pro Umpire High-Chair with Rectangular Sun Canopy & Seated Match Referee
+   * - Shaded Player Changeover Benches, Coolers, Broadcast Camera Platform, Floodlight Towers & Multi-Layered Trees
    */
   buildRealisticOutdoorStadium() {
     const envGroup = new THREE.Group();
     envGroup.name = 'Outdoor_Pickleball_Stadium';
 
-    // 1. Atmospheric Sky Dome Shader
-    const skyGeo = new THREE.SphereGeometry(180, 36, 20);
+    // 1. Atmospheric Sky Dome Shader with Volumetric-Style Cumulus Clouds
+    const skyGeo = new THREE.SphereGeometry(200, 48, 28);
     const skyMat = new THREE.ShaderMaterial({
       side: THREE.BackSide,
       depthWrite: false,
       uniforms: {
-        topColor: { value: new THREE.Color(0x2563eb) },
-        midColor: { value: new THREE.Color(0x7dd3fc) },
-        bottomColor: { value: new THREE.Color(0xfff1d6) },
-        sunDir: { value: new THREE.Vector3(0.45, 0.55, 0.45).normalize() },
+        topColor: { value: new THREE.Color(0x1d4ed8) },
+        midColor: { value: new THREE.Color(0x60a5fa) },
+        bottomColor: { value: new THREE.Color(0xeef6ff) },
+        sunDir: { value: new THREE.Vector3(0.46, 0.56, 0.42).normalize() },
       },
       vertexShader: `
         varying vec3 vWorldPos;
@@ -183,240 +238,784 @@ class PickleballSimulationApp {
         uniform vec3 bottomColor;
         uniform vec3 sunDir;
         varying vec3 vWorldPos;
+
+        float hash(vec2 p) {
+          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+        }
+        float noise(vec2 p) {
+          vec2 i = floor(p);
+          vec2 f = fract(p);
+          f = f * f * (3.0 - 2.0 * f);
+          float a = hash(i);
+          float b = hash(i + vec2(1.0, 0.0));
+          float c = hash(i + vec2(0.0, 1.0));
+          float d = hash(i + vec2(1.0, 1.0));
+          return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+        }
+        float fbm(vec2 p) {
+          float v = 0.0;
+          float a = 0.5;
+          for (int i = 0; i < 4; i++) {
+            v += a * noise(p);
+            p *= 2.04;
+            a *= 0.5;
+          }
+          return v;
+        }
+
         void main() {
           vec3 dir = normalize(vWorldPos);
           float h = clamp(dir.y, 0.0, 1.0);
-          vec3 col = mix(bottomColor, midColor, smoothstep(0.0, 0.28, h));
-          col = mix(col, topColor, smoothstep(0.28, 0.85, h));
+          vec3 col = mix(bottomColor, midColor, smoothstep(0.0, 0.24, h));
+          col = mix(col, topColor, smoothstep(0.24, 0.88, h));
+
+          // Soft cumulus cloud layer on upper hemisphere
+          if (dir.y > 0.03) {
+            vec2 uv = dir.xz / (dir.y + 0.18) * 2.2;
+            float n = fbm(uv + vec2(1.7, -0.8));
+            float cloud = smoothstep(0.48, 0.76, n) * smoothstep(0.03, 0.22, dir.y) * smoothstep(0.92, 0.35, dir.y);
+            float sunLit = max(dot(dir, sunDir), 0.0);
+            vec3 cloudCol = mix(vec3(0.88, 0.92, 0.97), vec3(1.0, 0.98, 0.94), 0.5 + 0.5 * sunLit);
+            col = mix(col, cloudCol, cloud * 0.68);
+          }
+
           float sunAmt = max(dot(dir, sunDir), 0.0);
-          col += vec3(1.0, 0.92, 0.72) * pow(sunAmt, 32.0) * 0.45;
-          col += vec3(1.0, 0.98, 0.9) * smoothstep(0.996, 0.9995, sunAmt);
+          col += vec3(1.0, 0.91, 0.72) * pow(sunAmt, 28.0) * 0.42;
+          col += vec3(1.0, 0.98, 0.92) * smoothstep(0.996, 0.9995, sunAmt);
           gl_FragColor = vec4(col, 1.0);
         }
       `,
     });
     envGroup.add(new THREE.Mesh(skyGeo, skyMat));
 
-    // 2. Lush Country-Club Turf & Park Grounds outside Concrete Court Apron
-    const turfMat = new THREE.MeshStandardMaterial({
-      color: 0x3b7a3e,
-      roughness: 0.92,
-      metalness: 0.02,
-    });
+    // 2. Championship Grounds & Textured Architectural Concourse
+    const turfCanvas = document.createElement('canvas');
+    turfCanvas.width = 512;
+    turfCanvas.height = 512;
+    const tCtx = turfCanvas.getContext('2d');
+    tCtx.fillStyle = '#2d5a34';
+    tCtx.fillRect(0, 0, 512, 512);
+    for (let s = 0; s < 16; s++) {
+      tCtx.fillStyle = s % 2 === 0 ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)';
+      tCtx.fillRect(0, s * 32, 512, 32);
+    }
+    const turfTex = new THREE.CanvasTexture(turfCanvas);
+    turfTex.wrapS = THREE.RepeatWrapping;
+    turfTex.wrapT = THREE.RepeatWrapping;
+    turfTex.repeat.set(18, 18);
+    turfTex.colorSpace = THREE.SRGBColorSpace;
+
     const turfDisk = new THREE.Mesh(
-      new THREE.CircleGeometry(140, 64).rotateX(-Math.PI / 2),
-      turfMat
+      new THREE.CircleGeometry(150, 64).rotateX(-Math.PI / 2),
+      new THREE.MeshStandardMaterial({ map: turfTex, roughness: 0.92, metalness: 0.02 })
     );
-    turfDisk.position.y = -0.025;
+    turfDisk.position.y = -0.028;
     turfDisk.receiveShadow = true;
     envGroup.add(turfDisk);
 
-    // Outer terracotta/stone tournament concourse ring
-    const walkway = new THREE.Mesh(
-      new THREE.RingGeometry(11.8, 17.5, 64).rotateX(-Math.PI / 2),
-      new THREE.MeshStandardMaterial({ color: 0xc2b59b, roughness: 0.88 })
+    // Architectural stone paver concourse apron around the stadium
+    const paverMat = new THREE.MeshStandardMaterial({
+      color: 0x334155,
+      roughness: 0.82,
+      metalness: 0.08,
+    });
+    const concourseSlab = new THREE.Mesh(
+      new THREE.PlaneGeometry(32, 34).rotateX(-Math.PI / 2),
+      paverMat
     );
-    walkway.position.y = -0.018;
-    walkway.receiveShadow = true;
-    envGroup.add(walkway);
+    concourseSlab.position.y = -0.019;
+    concourseSlab.receiveShadow = true;
+    envGroup.add(concourseSlab);
 
-    // 3. Perimeter USAPA Dark-Green Windscreens & Sponsor Banners
-    const makeBannerTexture = (title, subtitle, accentHex) => {
+    // 3. Perimeter Court Walls & High-Contrast LED Sponsor Ribbon Boards
+    const makeSponsorBoardTex = (brand, tagline, bgHex, accentHex, badgeText) => {
       const c = document.createElement('canvas');
-      c.width = 512;
-      c.height = 128;
+      c.width = 1024;
+      c.height = 256;
       const ctx = c.getContext('2d');
-      ctx.fillStyle = '#0f3822';
-      ctx.fillRect(0, 0, 512, 128);
-      ctx.strokeStyle = accentHex;
-      ctx.lineWidth = 6;
-      ctx.strokeRect(8, 8, 496, 112);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '900 34px Inter, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(title, 256, 62);
+      const grad = ctx.createLinearGradient(0, 0, 1024, 256);
+      grad.addColorStop(0, bgHex);
+      grad.addColorStop(1, '#091526');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 1024, 256);
+
+      // Subtle diagonal carbon-style stripes
+      ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+      ctx.lineWidth = 14;
+      for (let x = -256; x < 1280; x += 48) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x + 200, 256);
+        ctx.stroke();
+      }
+
+      // Top & bottom accent bars
       ctx.fillStyle = accentHex;
-      ctx.font = '700 20px Inter, sans-serif';
-      ctx.fillText(subtitle, 256, 96);
+      ctx.fillRect(0, 0, 1024, 10);
+      ctx.fillRect(0, 246, 1024, 10);
+
+      // Left badge pill
+      ctx.fillStyle = accentHex;
+      ctx.beginPath();
+      ctx.roundRect(36, 46, 156, 42, 8);
+      ctx.fill();
+      ctx.fillStyle = '#091526';
+      ctx.font = '900 22px Inter, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(badgeText, 114, 75);
+
+      // Main brand typography
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 66px Inter, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(brand, 540, 134);
+
+      ctx.fillStyle = accentHex;
+      ctx.font = '700 30px Inter, system-ui, sans-serif';
+      ctx.fillText(tagline, 540, 194);
+
       const tex = new THREE.CanvasTexture(c);
       tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 8;
       return tex;
     };
 
-    const bannerTexMain = makeBannerTexture('PPA INDIA OPEN', 'OFFICIAL USAPA 20x44 PRO COURT', '#facc15');
-    const bannerTexSide = makeBannerTexture('T700 CARBON PRO', '40-HOLE AERODYNAMICS LAB', '#38bdf8');
-    const windscreenMat = new THREE.MeshStandardMaterial({
-      color: 0x113e25,
-      roughness: 0.85,
-      side: THREE.DoubleSide,
-    });
-    const bannerMatMain = new THREE.MeshStandardMaterial({ map: bannerTexMain, roughness: 0.65 });
-    const bannerMatSide = new THREE.MeshStandardMaterial({ map: bannerTexSide, roughness: 0.65 });
+    const texPPA = makeSponsorBoardTex(
+      'PPA INDIA OPEN',
+      'CHAMPIONSHIP CENTER COURT • USAPA PRO TOUR',
+      '#0c2d48',
+      '#facc15',
+      'LIVE TV'
+    );
+    const texCarbon = makeSponsorBoardTex(
+      'T700 CARBON PRO',
+      'RAW TORAY CARBON • 16MM HONEYCOMB CORE',
+      '#0f172a',
+      '#38bdf8',
+      'PRO LAB'
+    );
+    const texDupr = makeSponsorBoardTex(
+      'DUPR PRO ANALYTICS',
+      '40-HOLE MAGNUS AERODYNAMICS ENGINE',
+      '#0b3b24',
+      '#34d399',
+      'OFFICIAL'
+    );
 
-    // North & South Baseline Windscreens (at z = ±10.2m, width = 12.4m, height = 1.35m)
+    const wallMat = new THREE.MeshStandardMaterial({
+      color: 0x0f291e,
+      roughness: 0.78,
+      metalness: 0.12,
+    });
+    const trimCopingMat = new THREE.MeshStandardMaterial({
+      color: 0x1e293b,
+      roughness: 0.35,
+      metalness: 0.65,
+    });
+    const matPPA = new THREE.MeshStandardMaterial({ map: texPPA, roughness: 0.4, metalness: 0.1 });
+    const matCarbon = new THREE.MeshStandardMaterial({ map: texCarbon, roughness: 0.4, metalness: 0.1 });
+    const matDupr = new THREE.MeshStandardMaterial({ map: texDupr, roughness: 0.4, metalness: 0.1 });
+
+    // North & South Baseline Perimeter Walls (at z = ±10.25m, width = 12.6m, height = 1.28m)
     for (const zSign of [-1, 1]) {
-      const zPos = zSign * 10.2;
-      const wall = new THREE.Mesh(new THREE.BoxGeometry(12.4, 1.35, 0.08), windscreenMat);
-      wall.position.set(0, 0.675, zPos);
+      const zPos = zSign * 10.25;
+      const wall = new THREE.Mesh(new THREE.BoxGeometry(12.6, 1.28, 0.14), wallMat);
+      wall.position.set(0, 0.64, zPos);
       wall.castShadow = true;
       wall.receiveShadow = true;
       envGroup.add(wall);
 
-      for (const xOff of [-3.2, 0, 3.2]) {
-        const b = new THREE.Mesh(
-          new THREE.PlaneGeometry(2.7, 0.72),
-          xOff === 0 ? bannerMatMain : bannerMatSide
-        );
-        b.position.set(xOff, 0.72, zPos - zSign * 0.05);
+      const coping = new THREE.Mesh(new THREE.BoxGeometry(12.68, 0.06, 0.2), trimCopingMat);
+      coping.position.set(0, 1.29, zPos);
+      envGroup.add(coping);
+
+      const mats = [matCarbon, matPPA, matDupr];
+      [-3.85, 0, 3.85].forEach((xOff, idx) => {
+        const b = new THREE.Mesh(new THREE.PlaneGeometry(3.55, 0.88), mats[idx]);
+        b.position.set(xOff, 0.66, zPos - zSign * 0.075);
         if (zSign > 0) b.rotation.y = Math.PI;
         envGroup.add(b);
-      }
+      });
     }
 
-    // East & West Sideline Low Barrier Walls (at x = ±6.2m, length = 20.4m, height = 0.85m)
+    // East & West Sideline Perimeter Barrier Walls (at x = ±6.15m, length = 20.6m, height = 0.88m)
     for (const xSign of [-1, 1]) {
-      const xPos = xSign * 6.2;
-      const sideWall = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.85, 20.4), windscreenMat);
-      sideWall.position.set(xPos, 0.425, 0);
+      const xPos = xSign * 6.15;
+      const sideWall = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.88, 20.6), wallMat);
+      sideWall.position.set(xPos, 0.44, 0);
       sideWall.castShadow = true;
       sideWall.receiveShadow = true;
       envGroup.add(sideWall);
 
-      for (const zOff of [-5.2, 0, 5.2]) {
-        const b = new THREE.Mesh(
-          new THREE.PlaneGeometry(2.6, 0.62),
-          zOff === 0 ? bannerMatMain : bannerMatSide
-        );
-        b.position.set(xPos - xSign * 0.05, 0.44, zOff);
+      const coping = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.05, 20.66), trimCopingMat);
+      coping.position.set(xPos, 0.89, 0);
+      envGroup.add(coping);
+
+      const mats = [matDupr, matPPA, matCarbon, matPPA, matDupr];
+      [-7.4, -3.7, 0, 3.7, 7.4].forEach((zOff, idx) => {
+        const b = new THREE.Mesh(new THREE.PlaneGeometry(3.3, 0.68), mats[idx]);
+        b.position.set(xPos - xSign * 0.075, 0.45, zOff);
         b.rotation.y = xSign > 0 ? -Math.PI / 2 : Math.PI / 2;
         envGroup.add(b);
-      }
+      });
     }
 
-    // 4. Official Umpire High-Chair at West Net Post (x = -3.85, z = 0)
-    const chairMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4, metalness: 0.6 });
+    // 4. Official Pro Umpire High-Chair + Rectangular Awning + Seated Referee + Courtside Player Benches
+    const chairSteelMat = new THREE.MeshStandardMaterial({
+      color: 0x1e293b,
+      roughness: 0.35,
+      metalness: 0.72,
+    });
+    const cushionMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.55 });
+    const awningMat = new THREE.MeshStandardMaterial({ color: 0x0c2d48, roughness: 0.65 });
+
     const umpireGroup = new THREE.Group();
-    umpireGroup.position.set(-4.15, 0, 0);
-    const legGeo = new THREE.CylinderGeometry(0.03, 0.03, 1.85, 10);
-    for (const [lx, lz] of [[-0.25, -0.25], [0.25, -0.25], [-0.25, 0.25], [0.25, 0.25]]) {
-      const leg = new THREE.Mesh(legGeo, chairMat);
-      leg.position.set(lx, 0.92, lz);
+    umpireGroup.position.set(-4.22, 0, 0);
+    // 4 angled structural legs + ladder rungs
+    for (const [lx, lz] of [[-0.28, -0.26], [0.28, -0.26], [-0.28, 0.26], [0.28, 0.26]]) {
+      const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.032, 1.85, 12), chairSteelMat);
+      leg.position.set(lx, 0.925, lz);
+      leg.castShadow = true;
       umpireGroup.add(leg);
     }
-    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.58, 0.08, 0.54), chairMat);
-    seat.position.set(0, 1.85, 0);
-    const backrest = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.52, 0.52), chairMat);
-    backrest.position.set(-0.25, 2.12, 0);
-    // Canopy shade above umpire chair
-    const canopy = new THREE.Mesh(
-      new THREE.ConeGeometry(0.85, 0.35, 8),
-      new THREE.MeshStandardMaterial({ color: 0x0f3822, roughness: 0.7 })
-    );
-    canopy.position.set(0, 2.95, 0);
-    umpireGroup.add(seat, backrest, canopy);
+    for (let r = 1; r <= 4; r++) {
+      const rung = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.52, 8), chairSteelMat);
+      rung.rotation.x = Math.PI / 2;
+      rung.position.set(0.28, r * 0.38, 0);
+      umpireGroup.add(rung);
+    }
+    const seat = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.07, 0.54), cushionMat);
+    seat.position.set(0, 1.86, 0);
+    const backrest = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.54, 0.52), cushionMat);
+    backrest.position.set(-0.25, 2.15, 0);
+    // Rear awning support posts + rectangular architectural sun shade canopy
+    for (const pz of [-0.24, 0.24]) {
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 1.15, 8), chairSteelMat);
+      post.position.set(-0.26, 2.42, pz);
+      umpireGroup.add(post);
+    }
+    const awningRoof = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.06, 0.88), awningMat);
+    awningRoof.position.set(0.05, 2.98, 0);
+    awningRoof.rotation.z = -0.06;
+    awningRoof.castShadow = true;
+
+    // Seated 3D Match Referee in Official Tour Polo & Cap
+    const refSkinMat = new THREE.MeshStandardMaterial({ color: 0xb26c49, roughness: 0.48 });
+    const refPoloMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.55 });
+    const refPantsMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.65 });
+    const refTorso = new THREE.Mesh(new THREE.CapsuleGeometry(0.14, 0.32, 8, 12), refPoloMat);
+    refTorso.position.set(-0.04, 2.18, 0);
+    const refHead = new THREE.Mesh(new THREE.SphereGeometry(0.11, 14, 12), refSkinMat);
+    refHead.position.set(0.0, 2.52, 0);
+    const refCap = new THREE.Mesh(new THREE.SphereGeometry(0.115, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), cushionMat);
+    refCap.position.set(0.0, 2.54, 0);
+    const refVisor = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.015, 0.14), cushionMat);
+    refVisor.position.set(0.09, 2.55, 0);
+    for (const lz of [-0.11, 0.11]) {
+      const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.24, 6, 8), refPantsMat);
+      thigh.rotation.z = Math.PI / 2;
+      thigh.position.set(0.12, 1.93, lz);
+      const shin = new THREE.Mesh(new THREE.CapsuleGeometry(0.048, 0.28, 6, 8), refPantsMat);
+      shin.position.set(0.26, 1.72, lz);
+      umpireGroup.add(thigh, shin);
+    }
+    umpireGroup.add(seat, backrest, awningRoof, refTorso, refHead, refCap, refVisor);
     envGroup.add(umpireGroup);
 
-    // 5. Sideline Spectator Bleachers & Animated 3D Spectators (East & West Grandstands)
-    const stepMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.6, metalness: 0.2 });
-    const skinMatCrowd = new THREE.MeshStandardMaterial({ color: 0xb8734b, roughness: 0.55 });
-    const hairMatCrowd = new THREE.MeshStandardMaterial({ color: 0x1a1412, roughness: 0.7 });
-    const shirtColors = [0x38bdf8, 0xf97316, 0xfacc15, 0x10b981, 0xec4899, 0xa855f7, 0xffffff];
+    // Courtside Player Changeover Benches & Drink Coolers (West Sideline at z = ±3.8m)
+    const benchSeatMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.5 });
+    const coolerMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, roughness: 0.35 });
+    const coolerLidMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.3 });
+    for (const zBench of [-3.6, 3.6]) {
+      const bGroup = new THREE.Group();
+      bGroup.position.set(-4.85, 0, zBench);
+      const bSeat = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.08, 1.85), benchSeatMat);
+      bSeat.position.set(0, 0.46, 0);
+      bSeat.castShadow = true;
+      const bBack = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.45, 1.85), benchSeatMat);
+      bBack.position.set(-0.22, 0.72, 0);
+      bBack.castShadow = true;
+      const bLeg1 = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.45, 0.08), chairSteelMat);
+      bLeg1.position.set(0, 0.225, -0.78);
+      const bLeg2 = bLeg1.clone();
+      bLeg2.position.z = 0.78;
+      const cooler = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.48, 0.56), coolerMat);
+      cooler.position.set(0, 0.24, zBench > 0 ? 1.32 : -1.32);
+      cooler.castShadow = true;
+      const coolerLid = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.06, 0.58), coolerLidMat);
+      coolerLid.position.set(0, 0.50, zBench > 0 ? 1.32 : -1.32);
+      bGroup.add(bSeat, bBack, bLeg1, bLeg2, cooler, coolerLid);
+      envGroup.add(bGroup);
+    }
+
+    // 5. Covered East & West Championship Grandstand Pavilions with Articulated Seated Spectators
+    const riserMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.75, metalness: 0.15 });
+    const roofCanopyMat = new THREE.MeshStandardMaterial({
+      color: 0xf1f5f9,
+      roughness: 0.42,
+      metalness: 0.18,
+    });
+    const roofBeamMat = new THREE.MeshStandardMaterial({
+      color: 0x0f172a,
+      roughness: 0.35,
+      metalness: 0.75,
+    });
+    const glassRailMat = new THREE.MeshStandardMaterial({
+      color: 0xbae6fd,
+      roughness: 0.15,
+      metalness: 0.1,
+      transparent: true,
+      opacity: 0.38,
+    });
+    const bucketSeatMat = new THREE.MeshStandardMaterial({
+      color: 0x1e3a8a,
+      roughness: 0.45,
+      metalness: 0.1,
+    });
+
+    const skinPalette = [
+      new THREE.MeshStandardMaterial({ color: 0xc6865c, roughness: 0.48 }),
+      new THREE.MeshStandardMaterial({ color: 0xa6633c, roughness: 0.48 }),
+      new THREE.MeshStandardMaterial({ color: 0x8d5232, roughness: 0.50 }),
+      new THREE.MeshStandardMaterial({ color: 0xd99b72, roughness: 0.46 }),
+    ];
+    const hairPalette = [
+      new THREE.MeshStandardMaterial({ color: 0x161210, roughness: 0.65 }),
+      new THREE.MeshStandardMaterial({ color: 0x2b1d14, roughness: 0.65 }),
+      new THREE.MeshStandardMaterial({ color: 0x4a3525, roughness: 0.65 }),
+    ];
+    const apparelPalette = [
+      0x1e3a8a, 0x0f172a, 0xf8fafc, 0x0284c7, 0x065f46,
+      0x991b1b, 0x334155, 0xd97706, 0x475569, 0xe2e8f0,
+    ].map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.62 }));
+    const pantsPalette = [
+      new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 }),
+      new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7 }),
+      new THREE.MeshStandardMaterial({ color: 0xd6d3d1, roughness: 0.7 }),
+    ];
+
+    // Shared spectator geometry instances for clean performance
+    const seatBaseGeo = new THREE.BoxGeometry(0.38, 0.06, 0.42);
+    const seatBackGeo = new THREE.BoxGeometry(0.06, 0.36, 0.40);
+    const torsoGeo = new THREE.CapsuleGeometry(0.135, 0.28, 8, 12);
+    const shoulderGeo = new THREE.BoxGeometry(0.16, 0.11, 0.36);
+    const headGeo = new THREE.SphereGeometry(0.105, 12, 10);
+    const hairDomeGeo = new THREE.SphereGeometry(0.11, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.62);
+    const thighGeo = new THREE.CapsuleGeometry(0.052, 0.22, 6, 8);
+    thighGeo.rotateZ(Math.PI / 2);
+    const shinGeo = new THREE.CapsuleGeometry(0.044, 0.25, 6, 8);
+    const armGeo = new THREE.CapsuleGeometry(0.038, 0.22, 6, 8);
 
     for (const xSign of [-1, 1]) {
       const standGroup = new THREE.Group();
-      standGroup.position.set(xSign * 8.4, 0, 0);
+      standGroup.position.set(xSign * 7.85, 0, 0);
 
-      for (let tier = 0; tier < 3; tier++) {
+      // Front walkway podium + glass safety balustrade
+      const frontWalkway = new THREE.Mesh(new THREE.BoxGeometry(0.75, 0.42, 17.6), riserMat);
+      frontWalkway.position.set(-xSign * 0.55, 0.21, 0);
+      frontWalkway.receiveShadow = true;
+      standGroup.add(frontWalkway);
+
+      const glassPanel = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.68, 17.4), glassRailMat);
+      glassPanel.position.set(-xSign * 0.90, 0.76, 0);
+      const topRail = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.04, 17.5), roofBeamMat);
+      topRail.position.set(-xSign * 0.90, 1.11, 0);
+      standGroup.add(glassPanel, topRail);
+
+      // 4 Tiered Concrete Risers with Molded Stadium Seats & Seated Articulated Spectators
+      for (let tier = 0; tier < 4; tier++) {
+        const tierH = 0.52 + tier * 0.54;
+        const tierX = xSign * tier * 0.96;
         const tierMesh = new THREE.Mesh(
-          new THREE.BoxGeometry(0.95, 0.42 * (tier + 1), 14.5),
-          stepMat
+          new THREE.BoxGeometry(0.98, tierH, 17.6),
+          riserMat
         );
-        tierMesh.position.set(xSign * tier * 0.95, 0.21 * (tier + 1), 0);
+        tierMesh.position.set(tierX, tierH * 0.5, 0);
         tierMesh.castShadow = true;
         tierMesh.receiveShadow = true;
         standGroup.add(tierMesh);
 
-        // Populate each tier with cheering human spectators
-        for (let s = -5; s <= 5; s += 2) {
-          const specGroup = new THREE.Group();
-          const baseH = 0.42 * (tier + 1);
-          const zPos = s * 1.15 + (tier % 2) * 0.45;
-          specGroup.position.set(xSign * tier * 0.95, baseH, zPos);
-          specGroup.rotation.y = xSign > 0 ? -Math.PI / 2 : Math.PI / 2;
+        for (let s = -7; s <= 7; s++) {
+          const zSeat = s * 1.08;
+          // Stadium bucket seat
+          const sBase = new THREE.Mesh(seatBaseGeo, bucketSeatMat);
+          sBase.position.set(tierX, tierH + 0.03, zSeat);
+          const sBack = new THREE.Mesh(seatBackGeo, bucketSeatMat);
+          sBack.position.set(tierX + xSign * 0.16, tierH + 0.22, zSeat);
+          standGroup.add(sBase, sBack);
 
-          const shirtMat = new THREE.MeshStandardMaterial({
-            color: shirtColors[Math.abs(s + tier * 3) % shirtColors.length],
-            roughness: 0.65,
-          });
-          const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.16, 0.34, 8, 12), shirtMat);
-          torso.position.y = 0.32;
-          const head = new THREE.Mesh(new THREE.SphereGeometry(0.125, 12, 10), skinMatCrowd);
-          head.position.y = 0.66;
-          const hair = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 8), hairMatCrowd);
-          hair.position.set(0, 0.70, -0.02);
-          specGroup.add(torso, head, hair);
+          // Populate ~75% of seats with realistic seated spectators
+          if ((Math.abs(s * 3 + tier * 5) % 4) === 0 && Math.abs(s) > 5) continue;
+
+          const specGroup = new THREE.Group();
+          const jitterZ = ((s * 7 + tier * 3) % 5 - 2) * 0.025;
+          specGroup.position.set(tierX, tierH + 0.06, zSeat + jitterZ);
+          specGroup.rotation.y = xSign > 0 ? Math.PI : 0; // Local -X points toward court center
+
+          const idxHash = Math.abs(s * 11 + tier * 7 + (xSign > 0 ? 3 : 0));
+          const shirtMat = apparelPalette[idxHash % apparelPalette.length];
+          const pantMat = pantsPalette[idxHash % pantsPalette.length];
+          const skinMat = skinPalette[idxHash % skinPalette.length];
+          const hairMat = hairPalette[idxHash % hairPalette.length];
+
+          // Seated thighs & shins
+          for (const lz of [-0.09, 0.09]) {
+            const thigh = new THREE.Mesh(thighGeo, pantMat);
+            thigh.position.set(-0.12, 0.06, lz);
+            const shin = new THREE.Mesh(shinGeo, pantMat);
+            shin.position.set(-0.25, -0.12, lz);
+            specGroup.add(thigh, shin);
+          }
+
+          // Torso & shoulders
+          const torso = new THREE.Mesh(torsoGeo, shirtMat);
+          torso.position.set(0.02, 0.28, 0);
+          torso.castShadow = true;
+          const shoulders = new THREE.Mesh(shoulderGeo, shirtMat);
+          shoulders.position.set(0.02, 0.40, 0);
+          specGroup.add(torso, shoulders);
+
+          // Left & right arms resting forward / clapping
+          for (const az of [-0.18, 0.18]) {
+            const arm = new THREE.Mesh(armGeo, skinMat);
+            arm.position.set(-0.08, 0.28, az);
+            arm.rotation.z = 0.55;
+            arm.rotation.x = az * 0.6;
+            specGroup.add(arm);
+          }
+
+          // Head & hair / cap
+          const head = new THREE.Mesh(headGeo, skinMat);
+          head.position.set(0.0, 0.56, 0);
+          const hair = new THREE.Mesh(hairDomeGeo, idxHash % 3 === 0 ? shirtMat : hairMat);
+          hair.position.set(0.01, 0.57, 0);
+          specGroup.add(head, hair);
 
           standGroup.add(specGroup);
           this.spectators.push({
             mesh: specGroup,
-            baseY: baseH,
-            phase: (s * 1.3 + tier) * 0.9,
+            baseY: tierH + 0.06,
+            phase: (s * 1.1 + tier * 1.7) * 0.8,
           });
         }
       }
+
+      // Rear architectural wall & steel columns supporting cantilevered stadium roof
+      const rearX = xSign * 3.55;
+      const rearWall = new THREE.Mesh(new THREE.BoxGeometry(0.28, 3.6, 17.8), riserMat);
+      rearWall.position.set(rearX, 1.8, 0);
+      rearWall.castShadow = true;
+      rearWall.receiveShadow = true;
+      standGroup.add(rearWall);
+
+      for (const zCol of [-8.2, -4.1, 0, 4.1, 8.2]) {
+        const col = new THREE.Mesh(new THREE.BoxGeometry(0.24, 5.4, 0.24), roofBeamMat);
+        col.position.set(rearX, 2.7, zCol);
+        col.castShadow = true;
+        const beam = new THREE.Mesh(new THREE.BoxGeometry(4.8, 0.18, 0.22), roofBeamMat);
+        beam.position.set(xSign * 1.35, 5.25, zCol);
+        beam.rotation.z = xSign * 0.07;
+        standGroup.add(col, beam);
+      }
+
+      // Cantilevered Stadium Roof Canopy + Under-Eave Linear LED Strip
+      const roof = new THREE.Mesh(new THREE.BoxGeometry(5.1, 0.14, 18.4), roofCanopyMat);
+      roof.position.set(xSign * 1.35, 5.38, 0);
+      roof.rotation.z = xSign * 0.07;
+      roof.castShadow = true;
+      roof.receiveShadow = true;
+
+      const fascia = new THREE.Mesh(
+        new THREE.BoxGeometry(0.12, 0.28, 18.4),
+        new THREE.MeshStandardMaterial({ color: 0x0c2d48, roughness: 0.4 })
+      );
+      fascia.position.set(-xSign * 1.15, 5.22, 0);
+      standGroup.add(roof, fascia);
+
       envGroup.add(standGroup);
     }
 
-    // 6. Lush Surrounding Cypress & Park Trees + 4 Stadium Floodlight Towers
-    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x5c4033, roughness: 0.9 });
-    const foliageMat1 = new THREE.MeshStandardMaterial({ color: 0x2d6a32, roughness: 0.82 });
-    const foliageMat2 = new THREE.MeshStandardMaterial({ color: 0x3f8244, roughness: 0.82 });
+    // 6. North End-Court Broadcast Camera Platform & VIP Media Deck (at z = -11.6m)
+    const mediaDeck = new THREE.Group();
+    mediaDeck.position.set(0, 0, -11.65);
+    const deckBase = new THREE.Mesh(new THREE.BoxGeometry(5.2, 1.45, 1.8), riserMat);
+    deckBase.position.y = 0.725;
+    deckBase.castShadow = true;
+    deckBase.receiveShadow = true;
+    const camTripod = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.22, 0.95, 10), roofBeamMat);
+    camTripod.position.set(0, 1.92, 0.2);
+    const camBody = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.28, 0.56), roofBeamMat);
+    camBody.position.set(0, 2.45, 0.25);
+    const camLens = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.09, 0.11, 0.34, 12).rotateX(Math.PI / 2),
+      chairSteelMat
+    );
+    camLens.position.set(0, 2.45, 0.62);
+    mediaDeck.add(deckBase, camTripod, camBody, camLens);
+    envGroup.add(mediaDeck);
+
+    // 7. Realistic Multi-Cluster Park & Mediterranean Cypress Trees + Trimmed Concourse Hedges
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3525, roughness: 0.92 });
+    const foliageMats = [
+      new THREE.MeshStandardMaterial({ color: 0x1e4d2b, roughness: 0.84 }),
+      new THREE.MeshStandardMaterial({ color: 0x2d6a3e, roughness: 0.82 }),
+      new THREE.MeshStandardMaterial({ color: 0x3b7a47, roughness: 0.80 }),
+    ];
+    const dodecaGeo = new THREE.DodecahedronGeometry(1.0, 2);
+
+    // Trimmed perimeter boxwood hedges behind north & south walls
+    for (const zHedge of [-10.9, 10.9]) {
+      for (const xHedge of [-8.2, 8.2]) {
+        const hedge = new THREE.Mesh(new THREE.BoxGeometry(3.4, 1.05, 0.95), foliageMats[0]);
+        hedge.position.set(xHedge, 0.525, zHedge);
+        hedge.castShadow = true;
+        hedge.receiveShadow = true;
+        envGroup.add(hedge);
+      }
+    }
 
     const treeCoords = [
-      [-14, -15], [-9, -17], [0, -18], [9, -17], [14, -15],
-      [-16, -6], [-16, 6], [16, -6], [16, 6],
-      [-14, 15], [-8, 17], [8, 17], [14, 15],
+      [-15.5, -15.5], [-9.5, -17.5], [-4.2, -18.5], [4.2, -18.5], [9.5, -17.5], [15.5, -15.5],
+      [-17.5, -7.5], [-17.5, 7.5], [17.5, -7.5], [17.5, 7.5],
+      [-15.5, 15.5], [-9.0, 17.8], [9.0, 17.8], [15.5, 15.5],
     ];
     treeCoords.forEach(([tx, tz], i) => {
       const tGroup = new THREE.Group();
-      const s = 0.9 + (i % 3) * 0.22;
+      const s = 0.92 + (i % 3) * 0.24;
       tGroup.position.set(tx, 0, tz);
       tGroup.scale.setScalar(s);
 
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.34, 2.2, 10), trunkMat);
-      trunk.position.y = 1.1;
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.34, 2.5, 10), trunkMat);
+      trunk.position.y = 1.25;
       trunk.castShadow = true;
-      const crown1 = new THREE.Mesh(new THREE.SphereGeometry(1.45, 14, 12), foliageMat1);
-      crown1.position.set(0, 2.9, 0);
-      crown1.scale.set(1, 1.35, 1);
-      crown1.castShadow = true;
-      const crown2 = new THREE.Mesh(new THREE.SphereGeometry(1.1, 12, 10), foliageMat2);
-      crown2.position.set(0.35, 4.1, 0.2);
-      crown2.castShadow = true;
-      tGroup.add(trunk, crown1, crown2);
+      tGroup.add(trunk);
+
+      // Multi-layered organic canopy clusters instead of toy spheres
+      const clusters = [
+        [0.0, 3.1, 0.0, 1.55, 1.25, 1.55, 0],
+        [-0.75, 2.75, 0.55, 1.15, 1.05, 1.15, 1],
+        [0.80, 2.85, -0.50, 1.20, 1.10, 1.20, 2],
+        [-0.55, 3.65, -0.60, 1.18, 1.15, 1.18, 1],
+        [0.60, 3.75, 0.60, 1.12, 1.12, 1.12, 0],
+        [0.05, 4.45, 0.05, 1.22, 1.18, 1.22, 2],
+      ];
+      clusters.forEach(([cx, cy, cz, sx, sy, sz, mIdx]) => {
+        const cl = new THREE.Mesh(dodecaGeo, foliageMats[mIdx]);
+        cl.position.set(cx, cy, cz);
+        cl.scale.set(sx, sy, sz);
+        cl.rotation.set(cx * 0.7, cy * 0.5, cz * 0.7);
+        cl.castShadow = true;
+        cl.receiveShadow = true;
+        tGroup.add(cl);
+      });
+
       envGroup.add(tGroup);
     });
 
-    // 4 Corner Stadium Light Poles
-    const poleMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.7, roughness: 0.35 });
-    const lampMat = new THREE.MeshStandardMaterial({
+    // 8. 4 Architectural Stadium Floodlight Masts with Multi-Cell LED Arrays
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.78, roughness: 0.28 });
+    const lampGlowMat = new THREE.MeshStandardMaterial({
       color: 0xffffff,
-      emissive: 0xfff8dc,
-      emissiveIntensity: 1.5,
+      emissive: 0xfff6e0,
+      emissiveIntensity: 2.2,
     });
-    for (const [px, pz] of [[-11.5, -11.5], [11.5, -11.5], [-11.5, 11.5], [11.5, 11.5]]) {
+    for (const [px, pz] of [[-13.2, -13.2], [13.2, -13.2], [-13.2, 13.2], [13.2, 13.2]]) {
       const pGroup = new THREE.Group();
       pGroup.position.set(px, 0, pz);
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.18, 11.5, 12), poleMat);
-      pole.position.y = 5.75;
-      const headBox = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.45, 0.35), lampMat);
-      headBox.position.set(0, 11.5, 0);
-      headBox.lookAt(0, 0, 0);
-      pGroup.add(pole, headBox);
+      const basePedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.42, 1.2, 12), riserMat);
+      basePedestal.position.y = 0.6;
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.26, 13.5, 14), poleMat);
+      pole.position.y = 6.75;
+      pole.castShadow = true;
+
+      const headMount = new THREE.Group();
+      headMount.position.set(0, 13.5, 0);
+      headMount.lookAt(0, 1.0, 0);
+      const frameBox = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.82, 0.28), poleMat);
+      const ledPanel = new THREE.Mesh(new THREE.PlaneGeometry(1.92, 0.66), lampGlowMat);
+      ledPanel.position.z = 0.15;
+      headMount.add(frameBox, ledPanel);
+
+      pGroup.add(basePedestal, pole, headMount);
       envGroup.add(pGroup);
     }
 
     this.scene.add(envGroup);
+  }
+
+  /**
+   * Upgrades the loaded court.glb materials at runtime with a high-resolution 2048x4096
+   * Laykold/SportMaster Pro Tournament Acrylic silica-grit texture, micro-roughness map,
+   * woven alpha net cord mesh, and official white center net strap.
+   */
+  upgradeCourtMaterials(courtRoot) {
+    const maxAniso = Math.min(16, this.renderer.capabilities.getMaxAnisotropy());
+
+    // 1. High-Resolution 2048x4096 Pro Tournament Acrylic Court Texture
+    // court.glb maps X in [-5.70, 5.70] (11.40m) -> U in [0, 1]
+    // and Z in [-10.30, 10.30] (20.60m) -> V in [0, 1]
+    const W = 2048;
+    const H = 4096;
+    const courtCanvas = document.createElement('canvas');
+    courtCanvas.width = W;
+    courtCanvas.height = H;
+    const ctx = courtCanvas.getContext('2d');
+
+    const uFromX = (x) => ((x + 5.70) / 11.40) * W;
+    const vFromZ = (z) => ((z + 10.30) / 20.60) * H;
+
+    // Outer Stadium Apron: Deep Tournament Forest/Teal Green (#164e35)
+    ctx.fillStyle = '#154c34';
+    ctx.fillRect(0, 0, W, H);
+
+    // Subtle directional acrylic roller bands across the court & apron
+    for (let i = 0; i < 44; i++) {
+      ctx.fillStyle = i % 2 === 0 ? 'rgba(255,255,255,0.014)' : 'rgba(0,0,0,0.014)';
+      const y0 = (i / 44) * H;
+      ctx.fillRect(0, y0, W, H / 44);
+    }
+
+    // Main 20x44ft Playing Surface (X in [-3.048, 3.048], Z in [-6.7056, 6.7056]): Pro Championship Royal Blue (#124e8c)
+    const xLeft = uFromX(-3.048);
+    const xRight = uFromX(3.048);
+    const zNorth = vFromZ(-6.7056);
+    const zSouth = vFromZ(6.7056);
+    ctx.fillStyle = '#145394';
+    ctx.fillRect(xLeft, zNorth, xRight - xLeft, zSouth - zNorth);
+
+    // Non-Volley Zone (7ft Kitchen on both sides of net, Z in [-2.1336, 2.1336]): Pro Contrast Oasis Cyan-Blue (#0c7bb3)
+    const zNvzNorth = vFromZ(-2.1336);
+    const zNvzSouth = vFromZ(2.1336);
+    ctx.fillStyle = '#0e74a8';
+    ctx.fillRect(xLeft, zNvzNorth, xRight - xLeft, zNvzSouth - zNvzNorth);
+
+    // Realistic Silica-Sand Micro-Grit & Subtle Baseline Footwork Scuffs
+    const bumpCanvas = document.createElement('canvas');
+    bumpCanvas.width = 512;
+    bumpCanvas.height = 512;
+    const bCtx = bumpCanvas.getContext('2d');
+    const imgData = bCtx.createImageData(512, 512);
+    let seed = 1337;
+    for (let i = 0; i < imgData.data.length; i += 4) {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      const g = 115 + (seed & 0x1f);
+      imgData.data[i] = g;
+      imgData.data[i + 1] = g;
+      imgData.data[i + 2] = g;
+      imgData.data[i + 3] = 255;
+    }
+    bCtx.putImageData(imgData, 0, 0);
+
+    // Subtle court wear / scuff marks near baselines and kitchen lines
+    ctx.save();
+    for (const zZone of [-6.85, -2.35, 2.35, 6.85]) {
+      const cy = vFromZ(zZone);
+      const radGrad = ctx.createRadialGradient(W * 0.5, cy, 20, W * 0.5, cy, 380);
+      radGrad.addColorStop(0, 'rgba(255,255,255,0.035)');
+      radGrad.addColorStop(1, 'rgba(255,255,255,0.0)');
+      ctx.fillStyle = radGrad;
+      ctx.fillRect(xLeft, cy - 380, xRight - xLeft, 760);
+    }
+    ctx.restore();
+
+    // Official USAPA 2-inch (5.08 cm) Crisp Textured White Court Lines
+    const lineW = (0.0508 / 11.40) * W;
+    const lineH = (0.0508 / 20.60) * H;
+    ctx.fillStyle = '#f8fafc';
+
+    // Outer perimeter rectangle (baselines & sidelines)
+    ctx.fillRect(xLeft - lineW * 0.5, zNorth - lineH * 0.5, xRight - xLeft + lineW, lineH);
+    ctx.fillRect(xLeft - lineW * 0.5, zSouth - lineH * 0.5, xRight - xLeft + lineW, lineH);
+    ctx.fillRect(xLeft - lineW * 0.5, zNorth - lineH * 0.5, lineW, zSouth - zNorth + lineH);
+    ctx.fillRect(xRight - lineW * 0.5, zNorth - lineH * 0.5, lineW, zSouth - zNorth + lineH);
+
+    // Non-Volley Zone (Kitchen) lines at Z = ±2.1336m
+    ctx.fillRect(xLeft, zNvzNorth - lineH * 0.5, xRight - xLeft, lineH);
+    ctx.fillRect(xLeft, zNvzSouth - lineH * 0.5, xRight - xLeft, lineH);
+
+    // Center Service Lines from Kitchen line (±2.1336m) to Baselines (±6.7056m)
+    const xCenter = uFromX(0);
+    ctx.fillRect(xCenter - lineW * 0.5, zNorth, lineW, zNvzNorth - zNorth);
+    ctx.fillRect(xCenter - lineW * 0.5, zNvzSouth, lineW, zSouth - zNvzSouth);
+
+    // Baseline center serving hash marks (2-inch x 6-inch)
+    const hashLen = (0.15 / 20.60) * H;
+    ctx.fillRect(xCenter - lineW * 0.5, zNorth - hashLen, lineW, hashLen);
+    ctx.fillRect(xCenter - lineW * 0.5, zSouth, lineW, hashLen);
+
+    const courtTex = new THREE.CanvasTexture(courtCanvas);
+    courtTex.flipY = false;
+    courtTex.colorSpace = THREE.SRGBColorSpace;
+    courtTex.anisotropy = maxAniso;
+
+    const bumpTex = new THREE.CanvasTexture(bumpCanvas);
+    bumpTex.wrapS = THREE.RepeatWrapping;
+    bumpTex.wrapT = THREE.RepeatWrapping;
+    bumpTex.repeat.set(24, 48);
+
+    // 2. Woven Black Cord Net Mesh Texture
+    const netCanvas = document.createElement('canvas');
+    netCanvas.width = 128;
+    netCanvas.height = 128;
+    const nCtx = netCanvas.getContext('2d');
+    nCtx.clearRect(0, 0, 128, 128);
+    nCtx.fillStyle = 'rgba(15, 23, 42, 0.22)';
+    nCtx.fillRect(0, 0, 128, 128);
+    nCtx.strokeStyle = 'rgba(15, 23, 42, 0.92)';
+    nCtx.lineWidth = 18;
+    nCtx.strokeRect(0, 0, 128, 128);
+    const netTex = new THREE.CanvasTexture(netCanvas);
+    netTex.wrapS = THREE.RepeatWrapping;
+    netTex.wrapT = THREE.RepeatWrapping;
+    netTex.repeat.set(96, 12);
+    netTex.anisotropy = maxAniso;
+
+    courtRoot.traverse((child) => {
+      if (!child.isMesh) return;
+      child.receiveShadow = true;
+      child.castShadow = child.name.includes('Post') || child.position.y > 0.05;
+
+      const matName = child.material ? child.material.name : '';
+      if (child.name === 'Court_Surface' || matName === 'Court_Acrylic_Concrete_Mat') {
+        child.material = new THREE.MeshStandardMaterial({
+          map: courtTex,
+          bumpMap: bumpTex,
+          bumpScale: 0.0025,
+          roughness: 0.64,
+          metalness: 0.04,
+        });
+      } else if (child.name === 'Net_Mesh' || matName === 'Net_Mesh_Black_Mat') {
+        child.material = new THREE.MeshStandardMaterial({
+          color: 0x0f172a,
+          map: netTex,
+          transparent: true,
+          opacity: 0.82,
+          roughness: 0.75,
+          side: THREE.DoubleSide,
+        });
+      } else if (matName === 'Net_Tape_White_Mat') {
+        child.material = new THREE.MeshStandardMaterial({
+          color: 0xf8fafc,
+          roughness: 0.42,
+          metalness: 0.05,
+        });
+      } else if (matName === 'Net_Post_Steel_Mat') {
+        child.material = new THREE.MeshStandardMaterial({
+          color: 0x0f172a,
+          roughness: 0.28,
+          metalness: 0.82,
+        });
+      }
+    });
+
+    // Add 3D Official White Center Net Strap & Tension Buckle at X=0, Z=0
+    const centerStrap = new THREE.Mesh(
+      new THREE.BoxGeometry(0.052, 0.8636, 0.032),
+      new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.45 })
+    );
+    centerStrap.position.set(0, 0.4318, 0);
+    centerStrap.castShadow = true;
+    courtRoot.add(centerStrap);
   }
 
   /**
@@ -464,21 +1063,20 @@ class PickleballSimulationApp {
       this.assets.maleGltf = maleGltf;
       this.assets.femaleGltf = femaleGltf;
 
-      // Add 20x44ft USAPA Court
-      this.assets.court.traverse((child) => {
-        if (child.isMesh) {
-          child.receiveShadow = true;
-          child.castShadow = child.name.includes('Post') || child.position.y > 0.05;
-        }
-      });
+      // Upgrade 20x44ft USAPA Court with High-Res Laykold Acrylic Texture & Woven Net
+      this.upgradeCourtMaterials(this.assets.court);
       this.scene.add(this.assets.court);
 
-      // Add 40-Hole USAPA Pickleball
+      // Add 40-Hole USAPA Pickleball with realistic satin polymer finish
       this.ballMesh = this.assets.ball;
       this.ballMesh.traverse((c) => {
         if (c.isMesh) {
           c.castShadow = true;
           c.receiveShadow = true;
+          if (c.material) {
+            c.material.roughness = 0.32;
+            c.material.metalness = 0.04;
+          }
         }
       });
       this.scene.add(this.ballMesh);
@@ -515,6 +1113,7 @@ class PickleballSimulationApp {
       root.name = `Player_${cfg.id}`;
 
       let skinnedMesh = null;
+      const skinnedMeshes = [];
       let rightHandBone = null;
       let headBone = null;
       let chestBone = null;
@@ -525,20 +1124,51 @@ class PickleballSimulationApp {
           child.receiveShadow = true;
           if (child.isSkinnedMesh) {
             skinnedMesh = child;
+            skinnedMeshes.push(child);
+            if (child.morphTargetInfluences) {
+              child.morphTargetInfluences.fill(0);
+            }
           }
-          // Fine-tune human skin, lip, cheek, and eye materials for natural outdoor sunlight warmth
+
+          // Clone material per athlete so Team 0 vs Team 1 have distinct pro tournament kits
+          if (Array.isArray(child.material)) {
+            child.material = child.material.map((m) => (m ? m.clone() : m));
+          } else if (child.material) {
+            child.material = child.material.clone();
+          }
+
           const mats = Array.isArray(child.material) ? child.material : [child.material];
           mats.forEach((m) => {
             if (!m) return;
             if (m.name.startsWith('Lips_')) {
-              m.color.setHex(cfg.gender === 'female' ? 0x9e423b : 0x7c352d);
-              m.roughness = 0.42;
-            } else if (m.name.startsWith('Cheek_')) {
-              m.color.setHex(cfg.gender === 'female' ? 0xb86646 : 0xa5593b);
-              m.roughness = 0.5;
-            } else if (m.name.startsWith('IndianSkin_')) {
-              m.color.setHex(cfg.gender === 'female' ? 0xb56d49 : 0xa35e3c);
-              m.roughness = 0.48;
+              m.color.setHex(cfg.gender === 'female' ? 0xa34842 : 0x823c35);
+              m.roughness = 0.38;
+            } else if (m.name.startsWith('IndianSkin_') || m.name.startsWith('Cheek_')) {
+              const skinHex =
+                cfg.id === 'p0'
+                  ? 0xb5724e
+                  : cfg.id === 'p1'
+                  ? 0xc4825d
+                  : cfg.id === 'p2'
+                  ? 0xa86644
+                  : 0xbd7a55;
+              m.color.setHex(skinHex);
+              m.roughness = 0.44;
+              m.metalness = 0.02;
+            } else if (m.name.startsWith('Jersey_')) {
+              // Team 0 (Arjun/Priya): Championship Royal Navy/Cobalt; Team 1 (Vikram/Ananya): Pro Crimson/Burgundy
+              if (cfg.team === 0) {
+                m.color.setHex(cfg.gender === 'female' ? 0x0284c7 : 0x1d4ed8);
+              } else {
+                m.color.setHex(cfg.gender === 'female' ? 0xbe123c : 0xb91c1c);
+              }
+              m.roughness = 0.62;
+            } else if (m.name.startsWith('Shorts_') || m.name.startsWith('Bottoms_')) {
+              m.color.setHex(cfg.team === 0 ? 0x0f172a : 0x18181b);
+              m.roughness = 0.68;
+            } else if (m.name.startsWith('Accent_')) {
+              m.color.setHex(cfg.team === 0 ? 0xfacc15 : 0x38bdf8);
+              m.roughness = 0.35;
             }
           });
         }
@@ -592,6 +1222,7 @@ class PickleballSimulationApp {
         ...cfg,
         root,
         skinnedMesh,
+        skinnedMeshes,
         headBone,
         chestBone,
         paddleMesh: paddleClone,
@@ -651,10 +1282,10 @@ class PickleballSimulationApp {
     player.expression = exprName;
     player.expressionTimer = durationSec;
     player.expressionTargets = {
-      Celebration: exprName === 'Celebration' ? 1.0 : 0.0,
-      Frustration: exprName === 'Frustration' ? 1.0 : 0.0,
-      Effort: exprName === 'Effort' ? 0.95 : 0.0,
-      Surprise: exprName === 'Surprise' ? 0.95 : 0.0,
+      Celebration: exprName === 'Celebration' ? 0.72 : 0.0,
+      Frustration: exprName === 'Frustration' ? 0.72 : 0.0,
+      Effort: exprName === 'Effort' ? 0.68 : 0.0,
+      Surprise: exprName === 'Surprise' ? 0.68 : 0.0,
     };
 
     const defaultPhrases = {
@@ -693,7 +1324,13 @@ class PickleballSimulationApp {
   }
 
   updatePlayerMorphTargets(player, dt) {
-    if (!player.skinnedMesh || !player.skinnedMesh.morphTargetDictionary) return;
+    const meshes = player.skinnedMeshes && player.skinnedMeshes.length > 0
+      ? player.skinnedMeshes
+      : player.skinnedMesh
+      ? [player.skinnedMesh]
+      : [];
+    if (meshes.length === 0) return;
+
     if (player.expressionTimer > 0) {
       player.expressionTimer -= dt;
       if (player.expressionTimer <= 0) {
@@ -706,15 +1343,19 @@ class PickleballSimulationApp {
         }
       }
     }
-    const dict = player.skinnedMesh.morphTargetDictionary;
-    const infl = player.skinnedMesh.morphTargetInfluences;
-    if (!infl) return;
 
-    for (const key of ['Celebration', 'Frustration', 'Effort', 'Surprise']) {
-      const idx = dict[key];
-      if (idx !== undefined) {
-        const targetVal = player.expressionTargets[key] || 0;
-        infl[idx] = THREE.MathUtils.lerp(infl[idx], targetVal, Math.min(1, dt * 8.5));
+    const alpha = Math.min(1, dt * 8.5);
+    for (const sm of meshes) {
+      const dict = sm.morphTargetDictionary;
+      const infl = sm.morphTargetInfluences;
+      if (!dict || !infl) continue;
+
+      for (const key of ['Celebration', 'Frustration', 'Effort', 'Surprise']) {
+        const idx = dict[key];
+        if (idx !== undefined) {
+          const targetVal = player.expressionTargets[key] || 0;
+          infl[idx] = THREE.MathUtils.lerp(infl[idx], targetVal, alpha);
+        }
       }
     }
   }
@@ -724,6 +1365,22 @@ class PickleballSimulationApp {
     this.setupPointPositions();
     this.updateModeUI();
     this.updateScoreHUD();
+    if (mode === 'doubles') {
+      this.showBanner(
+        'PPA Championship Doubles (2v2)',
+        'Official USAPA 0-0-2 Side-Out Scoring • Serve diagonally into the green service box!',
+        'info'
+      );
+    } else if (mode === 'singles') {
+      this.showBanner(
+        'PPA Tour Singles (1v1)',
+        'Even score serves from Right (Deuce) • Odd score serves from Left (Ad) • Double-Bounce Rule active!',
+        'info'
+      );
+    } else if (mode === 'training' && trainingIndex > 0) {
+      const mod = TRAINING_MODULES[trainingIndex];
+      if (mod) this.showBanner(mod.title, mod.subtitle, 'info');
+    }
   }
 
   setupPointPositions() {
@@ -1119,7 +1776,7 @@ class PickleballSimulationApp {
     this.updateLiveKeyPrompt();
 
     if (this.cameraPreset === 'closeup' && human) {
-      this.controls.target.lerp(new THREE.Vector3(human.pos.x, 1.54, human.pos.z), 0.12);
+      this.controls.target.lerp(new THREE.Vector3(human.pos.x - 0.06, 1.38, human.pos.z), 0.12);
     }
 
     this.controls.update();
@@ -1497,21 +2154,28 @@ class PickleballSimulationApp {
     this.cameraPreset = preset;
     const human = this.players[0];
     if (preset === 'broadcast') {
-      this.camera.position.set(0, 6.4, 12.6);
-      this.controls.target.set(0, 0.6, 0);
+      this.camera.position.set(0, 7.2, 13.9);
+      this.controls.target.set(0, 0.25, 0.45);
     } else if (preset === 'player') {
       const px = human ? human.pos.x * 0.5 : 0;
-      this.camera.position.set(px, 3.0, 9.8);
-      this.controls.target.set(0, 0.8, -2.5);
+      this.camera.position.set(px, 2.85, 10.2);
+      this.controls.target.set(0, 0.85, -2.2);
     } else if (preset === 'kitchen') {
-      this.camera.position.set(6.2, 2.2, 0.0);
-      this.controls.target.set(0, 0.75, 0);
+      this.camera.position.set(5.9, 2.15, 0.2);
+      this.controls.target.set(0, 0.82, 0);
     } else if (preset === 'overhead') {
-      this.camera.position.set(0, 16.5, 0.01);
+      this.camera.position.set(0, 17.2, 0.01);
       this.controls.target.set(0, 0, 0);
     } else if (preset === 'closeup' && human) {
-      this.camera.position.set(human.pos.x + 0.25, 1.62, human.pos.z - 1.25);
-      this.controls.target.set(human.pos.x, 1.54, human.pos.z);
+      const yaw = human.root.rotation.y;
+      const fwdX = Math.sin(yaw);
+      const fwdZ = Math.cos(yaw);
+      this.camera.position.set(
+        human.pos.x + fwdX * 1.55 - fwdZ * 0.28,
+        1.48,
+        human.pos.z + fwdZ * 1.55 + fwdX * 0.28
+      );
+      this.controls.target.set(human.pos.x - 0.06, 1.38, human.pos.z);
     }
     this.controls.update();
   }
@@ -1913,7 +2577,7 @@ class PickleballSimulationApp {
         container.appendChild(badge);
       }
 
-      if (!p.active) {
+      if (!p.active || (this.cameraPreset === 'closeup' && p.isHuman)) {
         badge.style.display = 'none';
         return;
       }
@@ -1928,6 +2592,10 @@ class PickleballSimulationApp {
 
       const x = (headWorld.x * 0.5 + 0.5) * window.innerWidth;
       const y = (-headWorld.y * 0.5 + 0.5) * window.innerHeight;
+      if (y < 95) {
+        badge.style.display = 'none';
+        return;
+      }
       badge.style.display = 'flex';
       badge.style.transform = `translate(-50%, -100%) translate(${x}px, ${y}px)`;
 
@@ -1982,19 +2650,19 @@ class PickleballSimulationApp {
 
     // Position portrait camera right in front of the athlete's face based on their facing direction!
     const yaw = targetPlayer.root.rotation.y;
-    const fwdX = -Math.sin(yaw);
-    const fwdZ = -Math.cos(yaw);
+    const fwdX = Math.sin(yaw);
+    const fwdZ = Math.cos(yaw);
     const facePos = new THREE.Vector3(
       targetPlayer.pos.x,
-      1.58,
+      1.56,
       targetPlayer.pos.z
     );
     this.faceCamera.position.set(
-      facePos.x + fwdX * 0.92 + fwdZ * 0.14,
-      1.61,
-      facePos.z + fwdZ * 0.92 - fwdX * 0.14
+      facePos.x + fwdX * 0.86 + fwdZ * 0.12,
+      1.59,
+      facePos.z + fwdZ * 0.86 - fwdX * 0.12
     );
-    this.faceCamera.lookAt(facePos.x, 1.56, facePos.z);
+    this.faceCamera.lookAt(facePos.x, 1.54, facePos.z);
 
     this.renderer.setViewport(pipLeft, pipBottom, pipW, pipH);
     this.renderer.setScissor(pipLeft, pipBottom, pipW, pipH);

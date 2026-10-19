@@ -12,7 +12,7 @@ import {
 import { TRAINING_MODULES, PickleballRules } from '../src/rules/PickleballRules.js';
 import { PickleballAI } from '../src/ai/PickleballAI.js';
 
-const assetsDir = path.resolve('/Users/mani/Documents/Mani/games/pickleball/public/assets');
+const assetsDir = path.resolve(import.meta.dirname, '../public/assets');
 
 console.log('=== 1. Verifying Blender MCP Exported GLB Assets ===');
 function parseGLBJson(filePath) {

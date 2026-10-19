@@ -4,34 +4,59 @@ A realistic **3D WebGL Pickleball Simulation Game** and **Interactive USAPA Rule
 
 ---
 
+## 📸 Actual Live Game Screenshots
+
+### 1. Pro Broadcast Center Court View (Interactive USAPA Coach & Hawkeye AR)
+![Pro Broadcast Center Court View](public/screenshots/broadcast_view.png)
+*Championship Center Court broadcast view featuring 16x-anisotropic Laykold/SportMaster silica-grit acrylic court surfaces, subtle Hawkeye AR target overlays, covered East/West grandstand pavilions with articulated seated spectators, shaded umpire high-chair with 3D referee, LED sponsor perimeter boards, and non-overlapping ESPN/PPA Tour TV broadcast HUD.*
+
+### 2. PPA Championship 2v2 Doubles Match (`0 - 0 - 2` Side-Out Scoring)
+![PPA Championship 2v2 Doubles Match](public/screenshots/doubles_match.png)
+*Full 2v2 Championship Doubles match with distinct pro team kits (**Team Near**: Royal Cobalt & Navy vs **Team Far**: Pro Crimson & Slate), live serve ballistic trajectory arc, and coordinated AI partner/opponent positioning.*
+
+### 3. Athlete & T700 Carbon Paddle Close-Up Cam (`Face Cam` + PiP Emotion Cam)
+![Athlete & T700 Carbon Paddle Close-Up Cam](public/screenshots/athlete_closeup.png)
+*Close-up portrait view of **Arjun** holding the 16mm **T700 Raw Carbon-Fiber Honeycomb Paddle**, showcasing continuous manifold human head/neck/torso sculpting, natural cranial & hair volume, almond eyes with upper eyelids and dark-brown irises, subtle 3D labial contours, and live facial morph targets.*
+
+### 4. Kitchen Net Cam & 40-Hole Paddle Contact / Spin Lab
+![Kitchen Net Cam & Pro Spin Lab](public/screenshots/kitchen_angle_lab.png)
+*Sideline Non-Volley Zone ("Kitchen") camera angle alongside **Ananya (AI)** at the 7-foot Kitchen line, with the interactive **Paddle Contact Angles & 40-Hole Lab** drawer open for real-time pitch, yaw, brush spin, and crosswind tuning.*
+
+### 5. Overhead Tactical Hawkeye View
+![Overhead Tactical Hawkeye View](public/screenshots/overhead_tactical.png)
+*Top-down tactical view highlighting USAPA 20×44 ft court geometry, 7-foot Non-Volley Zone ("The Kitchen") boundaries, doubles footwork coverage, and 240Hz Magnus spin trajectory arcs.*
+
+---
+
 ## ✨ Key Highlights
 
 ### 1. Lifelike 3D Human Athletes & Real-Time Human Emotions (Via Blender MCP)
-- **Anatomically Smooth Male & Female Indian Athletes** (`public/assets/player_male.glb`, `public/assets/player_female.glb`):
-  - **Arjun** (Male, India Blue kit) & **Priya** (Female, Coral/Teal skort kit) modeled with continuous organic smooth-shaded meshes, sculpted hands/fingers, almond-shaped eyes with upper eyelashes, dark-brown irises, pupils, corneal catchlights, arched eyebrows, 3D noses, natural lips, and smile teeth.
-- **4 Facial Emotion Shape Keys (Morph Targets)**:
-  - `Celebration`: Beaming open smile with lifted cheeks and joyful eyebrows on winning points.
-  - `Frustration`: Downturned frown and V-scowl eyebrows on unforced errors and faults.
-  - `Effort`: Intense athletic grit expression during overhead smashes and topspin drives.
-  - `Surprise`: Wide-eyed gasp on net-cord rolls and reflex kitchen volleys.
+- **Anatomically Sculpted Male & Female Pro Athletes** (`public/assets/player_male.glb`, `public/assets/player_female.glb`):
+  - **Arjun** & **Priya** (Team Near — Royal Cobalt / Teal kits) and **Vikram** & **Ananya** (Team Far — Pro Crimson & Slate kits) modeled as continuous manifold smooth-shaded meshes (`~7,350` vertices per athlete) with realistic cranial breadth, voluminous athletic hair crowns, sweatbands, almond-shaped eyes with upper eyelids, dark-brown irises, corneal catchlights, sculpted eyebrows, 3D noses, natural tapered lips, and athletic limb musculature.
+- **4 Subtle Facial Emotion Shape Keys (Morph Targets)**:
+  - `Celebration`: Natural smile with lifted mouth corners and eyebrows on winning points.
+  - `Frustration`: Subtle downturned mouth and furrowed inner brows on unforced errors and faults.
+  - `Effort`: Focused athletic grit expression during overhead smashes and topspin drives.
+  - `Surprise`: Expressive reaction on net-cord rolls and reflex kitchen volleys.
 - **9 Rigged Skeletal Animations (NLA Tracks)**:
   - **7 Court Strokes & Footwork**: `Idle_SplitStep`, `Run_Footwork`, `Serve_Underhand`, `Dink_Crosscourt`, `ThirdShot_Drop`, `Volley_Kitchen`, `Smash_Overhead`.
   - **2 Full-Body Human Emotion Reactions**: `Celebrate_FistPump` (victory jump & double fist-pump) and `Frustrated_Slump` (head-shake & hand-to-forehead slump).
 - **Live 3D "Human Emotion Cam" (Picture-in-Picture)**:
-  - A secondary Three.js portrait camera (`faceCamera`) renders a live 60 FPS close-up of the athlete's face and upper body directly inside the top-right broadcast HUD.
+  - A secondary Three.js portrait camera (`faceCamera`) renders a live 60 FPS front-facing close-up of the athlete's face and upper body directly inside the top-right broadcast HUD.
 
-### 2. USAPA-Standard 3D Equipment & Sunlit Outdoor Stadium
-- **20×44 ft USAPA Tournament Court (`public/assets/court.glb`)**:
-  - Exact USAPA dimensions (`6.096 m × 13.4112 m`), Royal Blue service courts, Coral **7-foot Non-Volley Zone ("The Kitchen")**, Emerald run-off apron, expansion-jointed concrete perimeter, and a physically modeled **36-inch sideline / 34-inch center parabolic sag net**.
+### 2. USAPA-Standard 3D Equipment & Pro Outdoor Championship Stadium
+- **20×44 ft USAPA Tournament Court (`public/assets/court.glb` + Procedural 4K Silica-Grit Acrylic Shader)**:
+  - Exact USAPA dimensions (`6.096 m × 13.4112 m`), US Open Blue service courts, Pro Light-Blue **7-foot Non-Volley Zone ("The Kitchen")**, Emerald Championship run-off apron, 16x-anisotropic Laykold/SportMaster micro-grit normal/bump mapping, and a physically modeled **36-inch sideline / 34-inch center parabolic sag net** with woven cord alpha mesh and center strap.
 - **Polypropylene Honeycomb & Raw Carbon Paddle (`public/assets/paddle.glb`)**:
   - `16.5" × 7.5"` 16mm paddle with baked polypropylene honeycomb core + T700 raw carbon-fiber face texture, TPU edge guard, and spiral octagonal grip attached to each athlete's `Hand.R` bone.
 - **40-Hole Outdoor Pickleball (`public/assets/pickleball.glb`)**:
   - `73.66 mm` diameter hollow optic-yellow ball with 40 precision circular aerodynamic holes.
-- **Outdoor Tournament Stadium**:
-  - Sunlit Rayleigh/Mie atmospheric sky dome, country-club turf grounds, 360° dark-green USAPA windscreens with `PPA INDIA OPEN` signage, umpire high-chair, 4 floodlight towers, cypress trees, and sideline grandstands with **36 animated 3D spectators** who jump and cheer on points.
+- **Pro Tour Championship Stadium**:
+  - Procedural HDR environment lighting (`PMREMGenerator`), 4096×4096 soft shadow maps, atmospheric sky dome with volumetric-style FBM cumulus clouds, covered East & West grandstand pavilions with cantilevered roofs, glass safety balustrades, molded stadium bucket seats, **36 articulated seated 3D spectators**, aluminum umpire high-chair with sun canopy and seated 3D referee, courtside player benches & coolers, LED sponsor perimeter boards (`PPA INDIA OPEN`, `T700 CARBON PRO`, `DUPR PRO ANALYTICS`), 4 multi-cell LED floodlight masts, and multi-cluster stadium trees.
 
 ### 3. Broadcast TV HUD & On-Screen Interactive Key Guide
 - **ESPN / PPA Tour TV Scorebug**: Live serving indicators, team rows, game score, official `0 - 0 - 2` USAPA 3-number call box, and a real-time **Double-Bounce Rule Status Strip**.
+- **Subtle Hawkeye AR Court Overlays (`src/ui/CourtOverlays.js`)**: Translucent broadcast-grade target rings, glow borders, and 3D ballistic trajectory arcs that preserve the realistic acrylic court texture beneath.
 - **Live Contextual Key Prompt Banner**: Dynamically tells you **what keys to hit right now** at every phase of a rally (e.g., *Your Serve*, *Wait for Double-Bounce*, *Kitchen Dink*, *High Ball Smash*).
 - **Interactive On-Screen Keycaps**: Visual keycaps for `[W][A][S][D]`, `[1]–[6]` Shot Types (with automatic **`RECOMMENDED`** badges), `[SPACE] / [🖱️ CLICK]` (with live power-charge meter), and `[Q]/[E]`, `[R]/[F]` paddle shaping that light up as you press them.
 
@@ -156,6 +181,12 @@ pickleball/
 │   ├── pickleball.glb              # 73.66mm USAPA outdoor ball with 40 circular holes
 │   ├── player_male.glb             # Rigged male athlete (Arjun) + 9 animations + 4 emotion morphs
 │   └── player_female.glb           # Rigged female athlete (Priya) + 9 animations + 4 emotion morphs
+├── public/screenshots/             # Actual live in-game WebGL screenshots
+│   ├── broadcast_view.png          # Pro broadcast center court view & USAPA coach
+│   ├── doubles_match.png           # 2v2 championship doubles match in action
+│   ├── athlete_closeup.png         # Close-up hero portrait of athlete & T700 carbon paddle
+│   ├── kitchen_angle_lab.png       # Kitchen net cam & 40-hole paddle contact / spin lab
+│   └── overhead_tactical.png       # Overhead tactical Hawkeye view
 ├── src/
 │   ├── main.js                     # Three.js WebGL scene, outdoor stadium, PiP camera & loop
 │   ├── style.css                   # Broadcast UI styling & interactive keycap animations
