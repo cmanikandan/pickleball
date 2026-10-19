@@ -499,27 +499,8 @@ class PickleballSimulationApp {
     awningRoof.rotation.z = -0.06;
     awningRoof.castShadow = true;
 
-    // Seated 3D Match Referee in Official Tour Polo & Cap
-    const refSkinMat = new THREE.MeshStandardMaterial({ color: 0xb26c49, roughness: 0.48 });
-    const refPoloMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.55 });
-    const refPantsMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.65 });
-    const refTorso = new THREE.Mesh(new THREE.CapsuleGeometry(0.14, 0.32, 8, 12), refPoloMat);
-    refTorso.position.set(-0.04, 2.18, 0);
-    const refHead = new THREE.Mesh(new THREE.SphereGeometry(0.11, 14, 12), refSkinMat);
-    refHead.position.set(0.0, 2.52, 0);
-    const refCap = new THREE.Mesh(new THREE.SphereGeometry(0.115, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), cushionMat);
-    refCap.position.set(0.0, 2.54, 0);
-    const refVisor = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.015, 0.14), cushionMat);
-    refVisor.position.set(0.09, 2.55, 0);
-    for (const lz of [-0.11, 0.11]) {
-      const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, 0.24, 6, 8), refPantsMat);
-      thigh.rotation.z = Math.PI / 2;
-      thigh.position.set(0.12, 1.93, lz);
-      const shin = new THREE.Mesh(new THREE.CapsuleGeometry(0.048, 0.28, 6, 8), refPantsMat);
-      shin.position.set(0.26, 1.72, lz);
-      umpireGroup.add(thigh, shin);
-    }
-    umpireGroup.add(seat, backrest, awningRoof, refTorso, refHead, refCap, refVisor);
+    umpireGroup.add(seat, backrest, awningRoof);
+    this.umpireGroup = umpireGroup;
     envGroup.add(umpireGroup);
 
     // Courtside Player Changeover Benches & Drink Coolers (West Sideline at z = ±3.8m)
@@ -548,7 +529,7 @@ class PickleballSimulationApp {
       envGroup.add(bGroup);
     }
 
-    // 5. Covered East & West Championship Grandstand Pavilions with Articulated Seated Spectators
+    // 5. Covered East & West Championship Grandstand Pavilions with Seated 3D Human Spectators
     const riserMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.75, metalness: 0.15 });
     const roofCanopyMat = new THREE.MeshStandardMaterial({
       color: 0xf1f5f9,
@@ -573,38 +554,9 @@ class PickleballSimulationApp {
       metalness: 0.1,
     });
 
-    const skinPalette = [
-      new THREE.MeshStandardMaterial({ color: 0xc6865c, roughness: 0.48 }),
-      new THREE.MeshStandardMaterial({ color: 0xa6633c, roughness: 0.48 }),
-      new THREE.MeshStandardMaterial({ color: 0x8d5232, roughness: 0.50 }),
-      new THREE.MeshStandardMaterial({ color: 0xd99b72, roughness: 0.46 }),
-    ];
-    const hairPalette = [
-      new THREE.MeshStandardMaterial({ color: 0x161210, roughness: 0.65 }),
-      new THREE.MeshStandardMaterial({ color: 0x2b1d14, roughness: 0.65 }),
-      new THREE.MeshStandardMaterial({ color: 0x4a3525, roughness: 0.65 }),
-    ];
-    const apparelPalette = [
-      0x1e3a8a, 0x0f172a, 0xf8fafc, 0x0284c7, 0x065f46,
-      0x991b1b, 0x334155, 0xd97706, 0x475569, 0xe2e8f0,
-    ].map((c) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.62 }));
-    const pantsPalette = [
-      new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 }),
-      new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.7 }),
-      new THREE.MeshStandardMaterial({ color: 0xd6d3d1, roughness: 0.7 }),
-    ];
-
-    // Shared spectator geometry instances for clean performance
-    const seatBaseGeo = new THREE.BoxGeometry(0.38, 0.06, 0.42);
-    const seatBackGeo = new THREE.BoxGeometry(0.06, 0.36, 0.40);
-    const torsoGeo = new THREE.CapsuleGeometry(0.135, 0.28, 8, 12);
-    const shoulderGeo = new THREE.BoxGeometry(0.16, 0.11, 0.36);
-    const headGeo = new THREE.SphereGeometry(0.105, 12, 10);
-    const hairDomeGeo = new THREE.SphereGeometry(0.11, 12, 8, 0, Math.PI * 2, 0, Math.PI * 0.62);
-    const thighGeo = new THREE.CapsuleGeometry(0.052, 0.22, 6, 8);
-    thighGeo.rotateZ(Math.PI / 2);
-    const shinGeo = new THREE.CapsuleGeometry(0.044, 0.25, 6, 8);
-    const armGeo = new THREE.CapsuleGeometry(0.038, 0.22, 6, 8);
+    const seatBaseGeo = new THREE.BoxGeometry(0.42, 0.06, 0.44);
+    const seatBackGeo = new THREE.BoxGeometry(0.06, 0.38, 0.42);
+    this.spectatorSeatAnchors = [];
 
     for (const xSign of [-1, 1]) {
       const standGroup = new THREE.Group();
@@ -622,7 +574,7 @@ class PickleballSimulationApp {
       topRail.position.set(-xSign * 0.90, 1.11, 0);
       standGroup.add(glassPanel, topRail);
 
-      // 4 Tiered Concrete Risers with Molded Stadium Seats & Seated Articulated Spectators
+      // 4 Tiered Concrete Risers with Molded Stadium Bucket Seats
       for (let tier = 0; tier < 4; tier++) {
         const tierH = 0.52 + tier * 0.54;
         const tierX = xSign * tier * 0.96;
@@ -635,67 +587,28 @@ class PickleballSimulationApp {
         tierMesh.receiveShadow = true;
         standGroup.add(tierMesh);
 
-        for (let s = -7; s <= 7; s++) {
-          const zSeat = s * 1.08;
-          // Stadium bucket seat
+        for (let s = -6; s <= 6; s++) {
+          const zSeat = s * 1.22;
           const sBase = new THREE.Mesh(seatBaseGeo, bucketSeatMat);
           sBase.position.set(tierX, tierH + 0.03, zSeat);
           const sBack = new THREE.Mesh(seatBackGeo, bucketSeatMat);
-          sBack.position.set(tierX + xSign * 0.16, tierH + 0.22, zSeat);
+          sBack.position.set(tierX + xSign * 0.17, tierH + 0.23, zSeat);
           standGroup.add(sBase, sBack);
 
-          // Populate ~75% of seats with realistic seated spectators
-          if ((Math.abs(s * 3 + tier * 5) % 4) === 0 && Math.abs(s) > 5) continue;
+          // Populate ~65% of seats with real 3D human spectators once GLBs load
+          if ((Math.abs(s * 3 + tier * 5 + (xSign > 0 ? 1 : 0)) % 3) === 0) continue;
 
-          const specGroup = new THREE.Group();
           const jitterZ = ((s * 7 + tier * 3) % 5 - 2) * 0.025;
-          specGroup.position.set(tierX, tierH + 0.06, zSeat + jitterZ);
-          specGroup.rotation.y = xSign > 0 ? Math.PI : 0; // Local -X points toward court center
-
-          const idxHash = Math.abs(s * 11 + tier * 7 + (xSign > 0 ? 3 : 0));
-          const shirtMat = apparelPalette[idxHash % apparelPalette.length];
-          const pantMat = pantsPalette[idxHash % pantsPalette.length];
-          const skinMat = skinPalette[idxHash % skinPalette.length];
-          const hairMat = hairPalette[idxHash % hairPalette.length];
-
-          // Seated thighs & shins
-          for (const lz of [-0.09, 0.09]) {
-            const thigh = new THREE.Mesh(thighGeo, pantMat);
-            thigh.position.set(-0.12, 0.06, lz);
-            const shin = new THREE.Mesh(shinGeo, pantMat);
-            shin.position.set(-0.25, -0.12, lz);
-            specGroup.add(thigh, shin);
-          }
-
-          // Torso & shoulders
-          const torso = new THREE.Mesh(torsoGeo, shirtMat);
-          torso.position.set(0.02, 0.28, 0);
-          torso.castShadow = true;
-          const shoulders = new THREE.Mesh(shoulderGeo, shirtMat);
-          shoulders.position.set(0.02, 0.40, 0);
-          specGroup.add(torso, shoulders);
-
-          // Left & right arms resting forward / clapping
-          for (const az of [-0.18, 0.18]) {
-            const arm = new THREE.Mesh(armGeo, skinMat);
-            arm.position.set(-0.08, 0.28, az);
-            arm.rotation.z = 0.55;
-            arm.rotation.x = az * 0.6;
-            specGroup.add(arm);
-          }
-
-          // Head & hair / cap
-          const head = new THREE.Mesh(headGeo, skinMat);
-          head.position.set(0.0, 0.56, 0);
-          const hair = new THREE.Mesh(hairDomeGeo, idxHash % 3 === 0 ? shirtMat : hairMat);
-          hair.position.set(0.01, 0.57, 0);
-          specGroup.add(head, hair);
-
-          standGroup.add(specGroup);
-          this.spectators.push({
-            mesh: specGroup,
-            baseY: tierH + 0.06,
-            phase: (s * 1.1 + tier * 1.7) * 0.8,
+          const idxHash = Math.abs(s * 11 + tier * 7 + (xSign > 0 ? 5 : 0));
+          this.spectatorSeatAnchors.push({
+            standGroup,
+            xSign,
+            tier,
+            s,
+            tierX,
+            tierH,
+            zSeat: zSeat + jitterZ,
+            idxHash,
           });
         }
       }
@@ -718,7 +631,7 @@ class PickleballSimulationApp {
         standGroup.add(col, beam);
       }
 
-      // Cantilevered Stadium Roof Canopy + Under-Eave Linear LED Strip
+      // Cantilevered Stadium Roof Canopy
       const roof = new THREE.Mesh(new THREE.BoxGeometry(5.1, 0.14, 18.4), roofCanopyMat);
       roof.position.set(xSign * 1.35, 5.38, 0);
       roof.rotation.z = xSign * 0.07;
@@ -754,14 +667,48 @@ class PickleballSimulationApp {
     mediaDeck.add(deckBase, camTripod, camBody, camLens);
     envGroup.add(mediaDeck);
 
-    // 7. Realistic Multi-Cluster Park & Mediterranean Cypress Trees + Trimmed Concourse Hedges
-    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3525, roughness: 0.92 });
+    // 7. Realistic Textured Foliage Trees with Multi-Bough Wooden Trunks & Leafy Canopies
+    const leafCanvas = document.createElement('canvas');
+    leafCanvas.width = 256;
+    leafCanvas.height = 256;
+    const lCtx = leafCanvas.getContext('2d');
+    lCtx.fillStyle = '#245832';
+    lCtx.fillRect(0, 0, 256, 256);
+    for (let i = 0; i < 900; i++) {
+      const lx = (i * 73) % 256;
+      const ly = (i * 139) % 256;
+      lCtx.fillStyle = i % 3 === 0 ? '#367542' : i % 3 === 1 ? '#1a4325' : '#468952';
+      lCtx.beginPath();
+      lCtx.ellipse(lx, ly, 6, 3.5, (i * 0.7) % Math.PI, 0, Math.PI * 2);
+      lCtx.fill();
+    }
+    const leafTex = new THREE.CanvasTexture(leafCanvas);
+    leafTex.wrapS = THREE.RepeatWrapping;
+    leafTex.wrapT = THREE.RepeatWrapping;
+    leafTex.repeat.set(3, 3);
+    leafTex.colorSpace = THREE.SRGBColorSpace;
+
+    const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4a3525, roughness: 0.94 });
     const foliageMats = [
-      new THREE.MeshStandardMaterial({ color: 0x1e4d2b, roughness: 0.84 }),
-      new THREE.MeshStandardMaterial({ color: 0x2d6a3e, roughness: 0.82 }),
-      new THREE.MeshStandardMaterial({ color: 0x3b7a47, roughness: 0.80 }),
+      new THREE.MeshStandardMaterial({ map: leafTex, color: 0xd8f3dc, roughness: 0.88, flatShading: true }),
+      new THREE.MeshStandardMaterial({ map: leafTex, color: 0xb7e4c7, roughness: 0.86, flatShading: true }),
+      new THREE.MeshStandardMaterial({ map: leafTex, color: 0x95d5b2, roughness: 0.85, flatShading: true }),
     ];
-    const dodecaGeo = new THREE.DodecahedronGeometry(1.0, 2);
+
+    // Sculpt organic vertex-displaced leaf cluster geometry (never smooth round spheres!)
+    const leafClusterGeo = new THREE.IcosahedronGeometry(1.0, 2);
+    const posAttr = leafClusterGeo.attributes.position;
+    for (let vi = 0; vi < posAttr.count; vi++) {
+      const vx = posAttr.getX(vi);
+      const vy = posAttr.getY(vi);
+      const vz = posAttr.getZ(vi);
+      const noise =
+        1.0 +
+        0.18 * Math.sin(vx * 5.2 + vy * 3.7) * Math.cos(vz * 4.8) +
+        0.10 * Math.cos(vx * 9.1 - vz * 7.3);
+      posAttr.setXYZ(vi, vx * noise, vy * (0.78 + 0.12 * noise), vz * noise);
+    }
+    leafClusterGeo.computeVertexNormals();
 
     // Trimmed perimeter boxwood hedges behind north & south walls
     for (const zHedge of [-10.9, 10.9]) {
@@ -781,29 +728,36 @@ class PickleballSimulationApp {
     ];
     treeCoords.forEach(([tx, tz], i) => {
       const tGroup = new THREE.Group();
-      const s = 0.92 + (i % 3) * 0.24;
+      const s = 0.92 + (i % 3) * 0.22;
       tGroup.position.set(tx, 0, tz);
       tGroup.scale.setScalar(s);
 
-      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.34, 2.5, 10), trunkMat);
-      trunk.position.y = 1.25;
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.34, 2.6, 9), trunkMat);
+      trunk.position.y = 1.3;
       trunk.castShadow = true;
       tGroup.add(trunk);
 
-      // Multi-layered organic canopy clusters instead of toy spheres
+      // Angled wooden boughs/branches reaching into the canopy
+      for (const [bx, bz, rotZ, rotX] of [[-0.38, 0.25, 0.48, 0.28], [0.40, -0.22, -0.45, -0.25], [0.15, 0.38, -0.22, 0.44]]) {
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.13, 1.35, 7), trunkMat);
+        branch.position.set(bx, 2.35, bz);
+        branch.rotation.set(rotX, 0, rotZ);
+        tGroup.add(branch);
+      }
+
       const clusters = [
-        [0.0, 3.1, 0.0, 1.55, 1.25, 1.55, 0],
-        [-0.75, 2.75, 0.55, 1.15, 1.05, 1.15, 1],
-        [0.80, 2.85, -0.50, 1.20, 1.10, 1.20, 2],
-        [-0.55, 3.65, -0.60, 1.18, 1.15, 1.18, 1],
-        [0.60, 3.75, 0.60, 1.12, 1.12, 1.12, 0],
-        [0.05, 4.45, 0.05, 1.22, 1.18, 1.22, 2],
+        [0.0, 3.15, 0.0, 1.55, 1.10, 1.55, 0],
+        [-0.85, 2.85, 0.55, 1.18, 0.92, 1.18, 1],
+        [0.85, 2.90, -0.50, 1.22, 0.95, 1.22, 2],
+        [-0.60, 3.65, -0.60, 1.20, 0.96, 1.20, 1],
+        [0.65, 3.70, 0.60, 1.15, 0.92, 1.15, 0],
+        [0.05, 4.25, 0.05, 1.28, 0.95, 1.28, 2],
       ];
       clusters.forEach(([cx, cy, cz, sx, sy, sz, mIdx]) => {
-        const cl = new THREE.Mesh(dodecaGeo, foliageMats[mIdx]);
+        const cl = new THREE.Mesh(leafClusterGeo, foliageMats[mIdx]);
         cl.position.set(cx, cy, cz);
         cl.scale.set(sx, sy, sz);
-        cl.rotation.set(cx * 0.7, cy * 0.5, cz * 0.7);
+        cl.rotation.set(cx * 0.9 + i, cy * 0.6, cz * 0.8);
         cl.castShadow = true;
         cl.receiveShadow = true;
         tGroup.add(cl);
@@ -1084,6 +1038,9 @@ class PickleballSimulationApp {
       // Build 4 Lifelike Rigged Human Athletes (Male & Female) with Paddles & Facial Morphs
       this.createAthletes();
 
+      // Populate Chair Umpire & Grandstand Audience with Real Articulated Seated 3D Humans
+      this.populateHumanUmpireAndSpectators();
+
       // Hide loading screen & start in Training Mode (Interactive Tutorial)
       const loadingEl = document.getElementById('loading-overlay');
       if (loadingEl) loadingEl.classList.add('hidden');
@@ -1099,6 +1056,114 @@ class PickleballSimulationApp {
     }
   }
 
+  /**
+   * Generates a 1024x1024 UV-mapped human facial & skin texture with subsurface warmth,
+   * orbital/nasolabial/jawline anatomical shading, pores, and realistic male beard/stubble.
+   */
+  createHumanSkinTexture(baseHex, isFemale = false) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 1024;
+    const ctx = canvas.getContext('2d');
+
+    const baseColor = new THREE.Color(baseHex);
+    const r0 = Math.round(baseColor.r * 255);
+    const g0 = Math.round(baseColor.g * 255);
+    const b0 = Math.round(baseColor.b * 255);
+
+    ctx.fillStyle = `rgb(${r0}, ${g0}, ${b0})`;
+    ctx.fillRect(0, 0, 1024, 1024);
+
+    // Helper that converts exact 3D head vertex height vz (in meters) to canvas Y coordinate
+    const yFromZ = (vz) => (1.0 - (vz - 1.415) / (1.755 - 1.415)) * 1024;
+
+    // Subtle organic skin pore & melanin micro-variation across entire skin surface
+    for (let i = 0; i < 14000; i++) {
+      const x = Math.random() * 1024;
+      const y = Math.random() * 1024;
+      const delta = (Math.random() - 0.48) * 10;
+      ctx.fillStyle = `rgba(${Math.max(0, Math.min(255, r0 + delta))}, ${Math.max(0, Math.min(255, g0 + delta * 0.85))}, ${Math.max(0, Math.min(255, b0 + delta * 0.75))}, 0.12)`;
+      ctx.fillRect(x, y, 2, 2);
+    }
+
+    const paintRadialZone = (cx, cy, rx, ry, colorStr) => {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(rx, ry);
+      const grad = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
+      grad.addColorStop(0, colorStr);
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(0, 0, 1, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    };
+
+    // Forehead & T-zone warm highlight (vz = 1.675)
+    paintRadialZone(512, yFromZ(1.675), 88, 42, 'rgba(255, 228, 205, 0.18)');
+    // Nose bridge highlight (vz = 1.632)
+    paintRadialZone(512, yFromZ(1.632), 16, 48, 'rgba(255, 232, 212, 0.22)');
+    // Zygomatic cheek subsurface warmth (vz = 1.622)
+    paintRadialZone(436, yFromZ(1.622), 48, 36, isFemale ? 'rgba(215, 85, 78, 0.22)' : 'rgba(190, 78, 66, 0.14)');
+    paintRadialZone(588, yFromZ(1.622), 48, 36, isFemale ? 'rgba(215, 85, 78, 0.22)' : 'rgba(190, 78, 66, 0.14)');
+    // Nose tip subsurface warmth (vz = 1.608)
+    paintRadialZone(512, yFromZ(1.608), 22, 18, 'rgba(195, 78, 66, 0.15)');
+
+    // Subtle orbital eye socket shading centered right at the eyes (vz = 1.645, x = 458, 566)
+    paintRadialZone(458, yFromZ(1.645), 34, 22, 'rgba(42, 18, 14, 0.22)');
+    paintRadialZone(566, yFromZ(1.645), 34, 22, 'rgba(42, 18, 14, 0.22)');
+
+    // Nasolabial smile-line creases from nostril wings (vz = 1.604) to mouth corners (vz = 1.580)
+    ctx.strokeStyle = 'rgba(52, 24, 16, 0.18)';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(488, yFromZ(1.604));
+    ctx.quadraticCurveTo(472, yFromZ(1.592), 476, yFromZ(1.578));
+    ctx.moveTo(536, yFromZ(1.604));
+    ctx.quadraticCurveTo(552, yFromZ(1.592), 548, yFromZ(1.578));
+    ctx.stroke();
+
+    // Labiomental crease under lower lip (vz = 1.564) & Chin boss highlight (vz = 1.546)
+    paintRadialZone(512, yFromZ(1.564), 28, 10, 'rgba(45, 20, 14, 0.18)');
+    paintRadialZone(512, yFromZ(1.546), 28, 18, 'rgba(255, 226, 202, 0.16)');
+
+    // Groomed male athlete 5-o'clock beard/jawline shading strictly on the jaw/chin/mustache (vz = 1.540..1.594)
+    if (!isFemale) {
+      const yMustache = yFromZ(1.591);
+      const yMouth = yFromZ(1.581);
+      const yChin = yFromZ(1.548);
+      const yJawTop = yFromZ(1.592);
+      const yJawBot = yFromZ(1.540);
+
+      paintRadialZone(512, yMustache, 38, 12, 'rgba(24, 18, 16, 0.18)');
+      paintRadialZone(512, yChin, 52, 26, 'rgba(24, 18, 16, 0.16)');
+      paintRadialZone(438, yFromZ(1.568), 54, 42, 'rgba(24, 18, 16, 0.14)');
+      paintRadialZone(586, yFromZ(1.568), 54, 42, 'rgba(24, 18, 16, 0.14)');
+
+      ctx.fillStyle = 'rgba(22, 16, 14, 0.22)';
+      for (let i = 0; i < 1800; i++) {
+        const fx = 370 + Math.random() * 284;
+        const fy = yJawTop + Math.random() * (yJawBot - yJawTop);
+        const dx = (fx - 512) / 142;
+        const dy = (fy - 0.5 * (yJawTop + yJawBot)) / (0.5 * (yJawBot - yJawTop));
+        const distSq = dx * dx + dy * dy;
+        const inMouthHole = Math.abs(fx - 512) < 36 && Math.abs(fy - yMouth) < 22;
+        const inUpperCheek = Math.abs(fx - 512) < 88 && fy < yMustache + 6 && Math.abs(fx - 512) > 36;
+        if (distSq <= 1.0 && !inMouthHole && !inUpperCheek) {
+          ctx.fillRect(fx, fy, 1.5, 1.8);
+        }
+      }
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.flipY = false;
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.needsUpdate = true;
+    return tex;
+  }
+
   createAthletes() {
     const configs = [
       { id: 'p0', name: 'Arjun (You)', gender: 'male', team: 0, isHuman: true },
@@ -1111,6 +1176,16 @@ class PickleballSimulationApp {
       const srcGltf = cfg.gender === 'female' ? this.assets.femaleGltf : this.assets.maleGltf;
       const root = SkeletonUtils.clone(srcGltf.scene);
       root.name = `Player_${cfg.id}`;
+
+      const skinHex =
+        cfg.id === 'p0'
+          ? 0xb87551
+          : cfg.id === 'p1'
+          ? 0xc68460
+          : cfg.id === 'p2'
+          ? 0xaa6846
+          : 0xbf7c58;
+      const humanSkinTex = this.createHumanSkinTexture(skinHex, cfg.gender === 'female');
 
       let skinnedMesh = null;
       const skinnedMeshes = [];
@@ -1141,20 +1216,20 @@ class PickleballSimulationApp {
           mats.forEach((m) => {
             if (!m) return;
             if (m.name.startsWith('Lips_')) {
-              m.color.setHex(cfg.gender === 'female' ? 0xa34842 : 0x823c35);
-              m.roughness = 0.38;
+              m.color.setHex(cfg.gender === 'female' ? 0xa64b45 : 0x874039);
+              m.roughness = 0.36;
             } else if (m.name.startsWith('IndianSkin_') || m.name.startsWith('Cheek_')) {
-              const skinHex =
-                cfg.id === 'p0'
-                  ? 0xb5724e
-                  : cfg.id === 'p1'
-                  ? 0xc4825d
-                  : cfg.id === 'p2'
-                  ? 0xa86644
-                  : 0xbd7a55;
-              m.color.setHex(skinHex);
+              m.color.setHex(0xffffff);
+              m.map = humanSkinTex;
               m.roughness = 0.44;
               m.metalness = 0.02;
+              m.envMapIntensity = 0.25;
+              m.needsUpdate = true;
+            } else if (m.name.includes('Hair')) {
+              m.color.setHex(cfg.gender === 'female' ? 0x1a120e : 0x16110e);
+              m.roughness = 0.86;
+              m.metalness = 0.0;
+              m.envMapIntensity = 0.12;
             } else if (m.name.startsWith('Jersey_')) {
               // Team 0 (Arjun/Priya): Championship Royal Navy/Cobalt; Team 1 (Vikram/Ananya): Pro Crimson/Burgundy
               if (cfg.team === 0) {
@@ -1195,7 +1270,7 @@ class PickleballSimulationApp {
 
       this.scene.add(root);
 
-      // Set up THREE.AnimationMixer with all 9 exported actions (including Celebrate_FistPump & Frustrated_Slump!)
+      // Set up THREE.AnimationMixer with all exported actions
       const mixer = new THREE.AnimationMixer(root);
       const actions = {};
       for (const clip of srcGltf.animations) {
@@ -1245,6 +1320,174 @@ class PickleballSimulationApp {
     });
 
     this.focusedEmotionPlayer = this.players[0];
+  }
+
+  /**
+   * Populates the Chair Umpire high chair and Grandstand spectator seats with real,
+   * articulated, seated 3D human characters cloned from our rigged athlete GLBs.
+   */
+  populateHumanUmpireAndSpectators() {
+    if (!this.assets.maleGltf || !this.assets.femaleGltf) return;
+
+    const findSeatedClip = (gltf) =>
+      gltf.animations.find((c) => c.name.includes('Seated_Spectator')) || gltf.animations[0];
+
+    const skinTones = [0xc6865e, 0xb5724e, 0xd4966e, 0x9c5c3c, 0x8a4e32, 0xe0a67e];
+    const hairTones = [0x14110f, 0x261a14, 0x3b261c, 0x1c1817, 0x4a3222];
+    const shirtPalette = [
+      0x1d4ed8, 0xe11d48, 0xf59e0b, 0x10b981, 0x7c3aed, 0x0284c7, 0xf8fafc, 0xea580c, 0x0d9488,
+    ];
+    const pantsPalette = [0x1e293b, 0x334155, 0x0f172a, 0x27272a, 0x3f3f46];
+
+    const skinTexCache = {
+      male: skinTones.map((hex) => this.createHumanSkinTexture(hex, false)),
+      female: skinTones.map((hex) => this.createHumanSkinTexture(hex, true)),
+    };
+
+    // 1. Seated Official Chair Umpire on the Sideline High Chair
+    if (this.umpireGroup) {
+      const umpireRoot = SkeletonUtils.clone(this.assets.maleGltf.scene);
+      umpireRoot.name = 'ChairUmpire_Human';
+      let umpireHead = null;
+
+      umpireRoot.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+          child.frustumCulled = false;
+          if (Array.isArray(child.material)) {
+            child.material = child.material.map((m) => (m ? m.clone() : m));
+          } else if (child.material) {
+            child.material = child.material.clone();
+          }
+          const mats = Array.isArray(child.material) ? child.material : [child.material];
+          mats.forEach((m) => {
+            if (!m) return;
+            if (m.name.startsWith('IndianSkin_') || m.name.startsWith('Cheek_')) {
+              m.color.setHex(0xffffff);
+              m.map = skinTexCache.male[1];
+              m.roughness = 0.44;
+              m.needsUpdate = true;
+            } else if (m.name.startsWith('Jersey_')) {
+              // Official PPA Tour Referee Amber-Gold Polo
+              m.color.setHex(0xeab308);
+              m.roughness = 0.65;
+            } else if (m.name.startsWith('Shorts_') || m.name.startsWith('Bottoms_')) {
+              // Navy Referee Slacks
+              m.color.setHex(0x0f172a);
+              m.roughness = 0.72;
+            } else if (m.name.startsWith('Accent_')) {
+              m.color.setHex(0x1e293b);
+            }
+          });
+        }
+        if (child.isBone && child.name === 'Head') {
+          umpireHead = child;
+        }
+      });
+
+      const umpMixer = new THREE.AnimationMixer(umpireRoot);
+      const seatedClip = findSeatedClip(this.assets.maleGltf);
+      if (seatedClip) {
+        const act = umpMixer.clipAction(seatedClip);
+        act.play();
+        umpMixer.update(0.05);
+      }
+
+      // Position seated umpire on high-chair seat pan (y = 1.80) facing +X toward the court
+      umpireRoot.scale.setScalar(0.88);
+      umpireRoot.position.set(0.02, 1.32, 0);
+      umpireRoot.rotation.y = Math.PI / 2;
+      umpireRoot.updateMatrixWorld(true);
+      this.umpireGroup.add(umpireRoot);
+      this.umpireHeadBone = umpireHead;
+    }
+
+    // 2. Articulated 3D Human Grandstand Spectators
+    if (this.spectatorSeatAnchors && this.spectatorSeatAnchors.length > 0) {
+      this.spectators = [];
+      this.spectatorSeatAnchors.forEach((seat, idx) => {
+        const isFemale = idx % 2 === 1;
+        const srcGltf = isFemale ? this.assets.femaleGltf : this.assets.maleGltf;
+        const specRoot = SkeletonUtils.clone(srcGltf.scene);
+        specRoot.name = `Spectator_Human_${idx}`;
+
+        const skinIdx = idx % skinTones.length;
+        const skinTex = isFemale ? skinTexCache.female[skinIdx] : skinTexCache.male[skinIdx];
+        const shirtHex = shirtPalette[(idx * 3 + Math.floor(idx / 2)) % shirtPalette.length];
+        const pantsHex = pantsPalette[idx % pantsPalette.length];
+        const hairHex = hairTones[idx % hairTones.length];
+        let headBone = null;
+
+        specRoot.traverse((child) => {
+          if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+            child.frustumCulled = false;
+            if (Array.isArray(child.material)) {
+              child.material = child.material.map((m) => (m ? m.clone() : m));
+            } else if (child.material) {
+              child.material = child.material.clone();
+            }
+            const mats = Array.isArray(child.material) ? child.material : [child.material];
+            mats.forEach((m) => {
+              if (!m) return;
+              if (m.name.startsWith('IndianSkin_') || m.name.startsWith('Cheek_')) {
+                m.color.setHex(0xffffff);
+                m.map = skinTex;
+                m.roughness = 0.46;
+                m.needsUpdate = true;
+              } else if (m.name.startsWith('Jersey_')) {
+                m.color.setHex(shirtHex);
+                m.roughness = 0.72;
+              } else if (m.name.startsWith('Shorts_') || m.name.startsWith('Bottoms_')) {
+                m.color.setHex(pantsHex);
+                m.roughness = 0.78;
+              } else if (m.name.startsWith('Hair_')) {
+                m.color.setHex(hairHex);
+              } else if (m.name.startsWith('Accent_') || m.name.startsWith('Shoe_')) {
+                m.color.setHex(idx % 3 === 0 ? 0xf8fafc : 0x1e293b);
+              }
+            });
+          }
+          if (child.isBone && child.name === 'Head') {
+            headBone = child;
+          }
+        });
+
+        const specMixer = new THREE.AnimationMixer(specRoot);
+        const seatedClip = findSeatedClip(srcGltf);
+        if (seatedClip) {
+          const act = specMixer.clipAction(seatedClip);
+          act.play();
+          specMixer.update(0.05);
+        }
+
+        const scale = 0.80 + (idx % 3) * 0.03;
+        specRoot.scale.setScalar(scale);
+
+        // Seat cushion top is at y = seat.tierH + 0.02; character's seated pelvis/thigh underside is ~0.58 * scale above root
+        const baseY = seat.tierH + 0.02 - 0.56 * scale;
+        const seatX = seat.tierX - seat.xSign * 0.04;
+        specRoot.position.set(seatX, baseY, seat.zSeat);
+
+        // Face across the court toward the net & action
+        const baseFacing = seat.xSign > 0 ? -Math.PI / 2 : Math.PI / 2;
+        const courtTurn = (seat.xSign > 0 ? 1 : -1) * Math.atan2(seat.zSeat, 9.5) * 0.35;
+        specRoot.rotation.y = baseFacing + courtTurn;
+        specRoot.updateMatrixWorld(true);
+
+        seat.standGroup.add(specRoot);
+        this.spectators.push({
+          mesh: specRoot,
+          headBone,
+          baseY,
+          xSign: seat.xSign,
+          zSeat: seat.zSeat,
+          phase: idx * 0.95,
+        });
+      });
+    }
   }
 
   /**
@@ -1719,15 +1962,36 @@ class PickleballSimulationApp {
     // 5. Update Human & AI Athlete Movement, Animations, Paddle Tilt, Breathing & Emotions
     this.updateAthletes(scaledDt);
 
-    // 6. Animate Stadium Spectators (cheering bounce when points are scored!)
+    // 6. Animate Stadium Spectators & Chair Umpire (head-tracking the ball + cheering on points)
     if (this.crowdCheerTimer > 0) {
       this.crowdCheerTimer -= scaledDt;
     }
-    const cheerAmp = this.crowdCheerTimer > 0 ? 0.14 : 0.015;
-    const cheerFreq = this.crowdCheerTimer > 0 ? 14.0 : 2.2;
+    const cheerAmp = this.crowdCheerTimer > 0 ? 0.10 : 0.008;
+    const cheerFreq = this.crowdCheerTimer > 0 ? 12.0 : 2.0;
+    const ballZ = this.physics ? this.physics.pos.z : 0;
+
+    if (this.umpireHeadBone) {
+      const targetYaw = THREE.MathUtils.clamp(-ballZ * 0.085, -0.52, 0.52);
+      this.umpireHeadBone.rotation.y = THREE.MathUtils.lerp(
+        this.umpireHeadBone.rotation.y,
+        targetYaw,
+        0.12
+      );
+    }
+
     for (const sp of this.spectators) {
       sp.mesh.position.y =
         sp.baseY + Math.abs(Math.sin(this.time * cheerFreq + sp.phase)) * cheerAmp;
+      if (sp.headBone) {
+        const dz = ballZ - (sp.zSeat || 0);
+        const sign = sp.xSign > 0 ? 1 : -1;
+        const specYaw = THREE.MathUtils.clamp(
+          sign * dz * 0.045 + Math.sin(this.time * 1.4 + sp.phase) * 0.04,
+          -0.45,
+          0.45
+        );
+        sp.headBone.rotation.y = THREE.MathUtils.lerp(sp.headBone.rotation.y, specYaw, 0.1);
+      }
     }
 
     // 7. Compute Real-Time Predicted Ballistic Trajectory for 3D Overlay
