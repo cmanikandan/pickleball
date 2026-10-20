@@ -14,7 +14,7 @@ export class CourtOverlays {
     this.group.name = 'CourtTutorialOverlays';
     this.scene.add(this.group);
 
-    this.showGuides = true;
+    this.showGuides = false;
 
     this.buildKitchenOverlay();
     this.buildServiceBoxOverlay();
@@ -207,10 +207,13 @@ export class CourtOverlays {
     aimTarget,
     humanPlayer,
     previewPoints,
+    showcaseFreeze = false,
   }) {
     const pulse = 0.5 + 0.5 * Math.sin(time * 4.5);
+    const showOverlays = !showcaseFreeze && (this.showGuides || rules.mode === 'training');
 
-    if (aimTarget) {
+    this.aimReticle.visible = showOverlays && Boolean(aimTarget);
+    if (showOverlays && aimTarget) {
       this.aimReticle.position.set(aimTarget.x, 0.014, aimTarget.z);
       const s = 1.0 + 0.05 * Math.sin(time * 5.5);
       this.aimReticle.scale.set(s, 1, s);
@@ -231,7 +234,6 @@ export class CourtOverlays {
       }
     }
 
-    const showOverlays = this.showGuides || rules.mode === 'training';
     this.kitchenGroup.visible = showOverlays;
     if (showOverlays) {
       const nearSafeToEnter =

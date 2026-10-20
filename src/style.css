@@ -24,7 +24,7 @@ body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  background: #87ceeb;
+  background: #060d24;
   font-family: var(--font-sans);
   color: var(--text-main);
 }
@@ -93,12 +93,60 @@ body {
   color: var(--text-muted);
 }
 
+/* Floating 3D Shot Timing Callouts ("PERFECT", "GREAT", "EARLY") */
+.timing-callouts-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 12;
+  overflow: hidden;
+}
+
+.timing-callout-badge {
+  position: absolute;
+  top: 0;
+  left: 0;
+  font-family: 'Arial Black', 'Inter', Impact, system-ui, sans-serif;
+  font-size: 2.15rem;
+  font-weight: 900;
+  letter-spacing: 0.025em;
+  line-height: 1;
+  text-transform: uppercase;
+  color: #4ade80;
+  -webkit-text-stroke: 2.6px #04120a;
+  paint-order: stroke fill;
+  text-shadow:
+    0 3px 0 #04120a,
+    0 -2px 0 #04120a,
+    2px 0 0 #04120a,
+    -2px 0 0 #04120a,
+    2px 2px 0 #04120a,
+    -2px 2px 0 #04120a,
+    0 6px 14px rgba(0, 0, 0, 0.72);
+  white-space: nowrap;
+  will-change: transform, opacity;
+}
+
+.timing-callout-badge.tier-great {
+  color: #38bdf8;
+  -webkit-text-stroke: 2.5px #041322;
+}
+
+.timing-callout-badge.tier-early {
+  color: #facc15;
+  -webkit-text-stroke: 2.5px #1c1304;
+}
+
 /* Floating 3D Player Name, Role & Emotion Speech Bubbles */
 .player-labels-layer {
   position: fixed;
   inset: 0;
   pointer-events: none;
   z-index: 5;
+}
+
+body.broadcast-clean-hud .player-floating-label:not(.has-emotion) {
+  display: none !important;
 }
 
 .player-floating-label {
@@ -1288,3 +1336,34 @@ body {
   font-weight: 800;
   cursor: pointer;
 }
+
+/* ============================================================================
+   CLEAN BROADCAST TV HUD MODE (Unobstructed PPA Tour 2025 Arena & Court View)
+   ============================================================================ */
+body.broadcast-clean-hud .tv-scorebug,
+body.broadcast-clean-hud .top-right-broadcast,
+body.broadcast-clean-hud .callout-banner,
+body.broadcast-clean-hud .hud-left,
+body.broadcast-clean-hud .hud-bottom {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(10px) scale(0.95);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+body.broadcast-clean-hud .top-center-deck {
+  position: fixed;
+  bottom: 6px;
+  left: 50%;
+  transform: translateX(-50%) scale(0.76);
+  transform-origin: bottom center;
+  opacity: 0.14;
+  z-index: 30;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+
+body.broadcast-clean-hud .top-center-deck:hover {
+  opacity: 0.96;
+  transform: translateX(-50%) scale(0.92);
+}
+

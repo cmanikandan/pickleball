@@ -6,9 +6,12 @@
   <title>PPA Tour 3D Pickleball Simulator & Interactive USAPA Rule Trainer</title>
   <link rel="stylesheet" href="/src/style.css" />
 </head>
-<body>
+<body class="broadcast-clean-hud">
   <!-- Full-Screen 3D WebGL Canvas -->
   <canvas id="game-canvas" aria-label="3D Pickleball Court Simulation"></canvas>
+
+  <!-- Floating 3D Shot Timing Callouts ("PERFECT", "GREAT", "EARLY") -->
+  <div id="timing-callouts-layer" class="timing-callouts-layer" aria-live="polite"></div>
 
   <!-- Floating 3D Player Name, Role & Human Emotion Speech Bubbles -->
   <div id="player-labels-layer" class="player-labels-layer"></div>
@@ -17,8 +20,8 @@
   <div id="loading-overlay" class="loading-overlay">
     <div class="loader-card">
       <div class="loader-spinner"></div>
-      <h1>PPA TOUR 3D PICKLEBALL</h1>
-      <p id="loading-status">Loading Lifelike Human Athletes, Facial Emotions, 40-Hole Ball & Outdoor Stadium...</p>
+      <h1>PPA PICKLEBALL TOUR 2025</h1>
+      <p id="loading-status">Loading PPA Tour 2025 Championship Arena, Selkirk Court &amp; Pro Athletes...</p>
     </div>
   </div>
 
@@ -28,7 +31,7 @@
     <div class="tv-scorebug">
       <div class="scorebug-header">
         <span class="live-dot"></span>
-        <span class="tour-title">PPA INDIA OPEN • CENTER COURT</span>
+        <span class="tour-title">PPA PICKLEBALL TOUR 2025</span>
         <span id="server-badge" class="srv-context">Server #2 • Right (Even)</span>
       </div>
 
@@ -62,13 +65,13 @@
     <!-- TOP-CENTER: Sleek Mode Switcher, Camera Angles & Utility Bar -->
     <div class="top-center-deck">
       <nav class="mode-tabs" aria-label="Game Modes">
-        <button type="button" class="mode-btn active" data-mode-btn="training">
+        <button type="button" class="mode-btn" data-mode-btn="training">
           🎓 Training Coach
         </button>
         <button type="button" class="mode-btn" data-mode-btn="singles">
           ⚡ Singles (1v1)
         </button>
-        <button type="button" class="mode-btn" data-mode-btn="doubles">
+        <button type="button" class="mode-btn active" data-mode-btn="doubles">
           🏆 Doubles (2v2)
         </button>
       </nav>
@@ -83,6 +86,9 @@
         </div>
 
         <div class="util-pills">
+          <button type="button" id="btn-toggle-clean-hud" class="util-pill active" title="Toggle Clean Broadcast TV View vs Full Interactive Controls">
+            📺 Clean Broadcast HUD
+          </button>
           <button type="button" id="btn-toggle-lab" class="util-pill">
             🎛️ Spin &amp; Angle Lab
           </button>
@@ -241,7 +247,7 @@
       </div>
 
       <div class="lab-toggles">
-        <button type="button" id="btn-toggle-guides" class="mini-btn active">3D Guides: ON</button>
+        <button type="button" id="btn-toggle-guides" class="mini-btn">3D Guides: OFF</button>
         <button type="button" id="btn-toggle-footwork" class="mini-btn active">Footwork: Auto-Assist</button>
       </div>
 
