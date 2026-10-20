@@ -74,12 +74,12 @@ class PickleballSimulationApp {
     this.scene.fog = new THREE.FogExp2(0x060d24, 0.0068);
 
     this.camera = new THREE.PerspectiveCamera(
-      38,
+      42,
       window.innerWidth / window.innerHeight,
       0.1,
       280
     );
-    this.camera.position.set(0, 5.55, 11.45);
+    this.camera.position.set(0, 6.10, 14.35);
 
     // Secondary Portrait Camera for the Top-Right "Live 3D Human Emotion Cam" (PiP)
     this.faceCamera = new THREE.PerspectiveCamera(24, 2.0, 0.08, 40);
@@ -106,7 +106,7 @@ class PickleballSimulationApp {
     this.controls.maxPolarAngle = Math.PI * 0.485;
     this.controls.minDistance = 1.2;
     this.controls.maxDistance = 36;
-    this.controls.target.set(0, 0.42, 0.10);
+    this.controls.target.set(0, 0.35, 0.25);
     // Right-click drag orbits camera so Left-click is dedicated to paddle strikes!
     this.controls.mouseButtons = {
       LEFT: null,
@@ -1258,6 +1258,12 @@ class PickleballSimulationApp {
       roughness: 0.65,
     });
 
+    const collarWhiteMat = new THREE.MeshStandardMaterial({
+      color: 0xf8fafc,
+      roughness: 0.35,
+      metalness: 0.08,
+    });
+
     paddleRoot.traverse((child) => {
       if (!child.isMesh) return;
       child.castShadow = true;
@@ -1268,17 +1274,10 @@ class PickleballSimulationApp {
         child.material = edgeGuardMat;
       } else if (mName.includes('Grip')) {
         child.material = gripMat;
+      } else if (mName.includes('Collar') || mName.includes('White')) {
+        child.material = collarWhiteMat;
       }
     });
-
-    // Add explicit double-sided Selkirk face graphic planes on both sides of the blade (y = ±0.0088, z = -0.205)
-    const faceDecalGeo = new THREE.PlaneGeometry(0.165, 0.23).rotateX(-Math.PI / 2);
-    const topDecal = new THREE.Mesh(faceDecalGeo, carbonMat);
-    topDecal.position.set(0, 0.0088, -0.205);
-    const botDecal = new THREE.Mesh(faceDecalGeo, carbonMat);
-    botDecal.position.set(0, -0.0088, -0.205);
-    botDecal.rotation.z = Math.PI;
-    paddleRoot.add(topDecal, botDecal);
   }
 
   /**
@@ -1524,12 +1523,12 @@ class PickleballSimulationApp {
         isHuman: true,
         skinHex: 0xd89c7a,
         jerseyHex: 0x8ec5fc,
-        trimHex: 0xdbeafe,
-        shortsHex: 0xa82ae3,
+        trimHex: 0x8ec5fc,
+        shortsHex: 0x6b215c,
         sockHex: 0x111827,
         shoeHex: 0xef4444,
         soleHex: 0xf8fafc,
-        hairHex: 0x2b1d14,
+        hairHex: 0x241710,
         sleeveHex: 0x8ec5fc,
         headwear: null,
       },
@@ -1596,18 +1595,20 @@ class PickleballSimulationApp {
       let skinnedMesh = null;
       const skinnedMeshes = [];
       const bones = {};
-      let hasNativeSleeve = false;
-      let hasNativeHeadwear = false;
 
       root.traverse((child) => {
         if (child.isBone) {
           bones[child.name] = child;
+          // Three.js PropertyBinding.sanitizeNodeName strips '.' from glTF bone names ('Hand.R' -> 'HandR')
+          const dotted = child.name.replace(
+            /^(Shoulder|UpperArm|Forearm|Hand|Thigh|Shin|Foot)([LR])$/,
+            '$1.$2'
+          );
+          bones[dotted] = child;
         }
         if (child.isMesh) {
           child.castShadow = true;
           child.receiveShadow = true;
-          if (/sleeve/i.test(child.name)) hasNativeSleeve = true;
-          if (/visor|headband|cap/i.test(child.name)) hasNativeHeadwear = true;
 
           if (child.isSkinnedMesh) {
             skinnedMesh = child;
@@ -1627,8 +1628,6 @@ class PickleballSimulationApp {
           mats.forEach((m) => {
             if (!m) return;
             const mName = m.name || '';
-            if (/sleeve/i.test(mName)) hasNativeSleeve = true;
-            if (/visor|headband|cap/i.test(mName)) hasNativeHeadwear = true;
 
             if (mName.startsWith('Lips_')) {
               m.color.setHex(cfg.gender === 'female' ? 0xb5534c : 0x944840);
@@ -1675,8 +1674,7 @@ class PickleballSimulationApp {
               m.roughness = 0.55;
             } else if (/visor|cap|headband/i.test(mName)) {
               if (!cfg.headwear) {
-                m.color.setHex(cfg.hairHex);
-                m.roughness = 0.78;
+                child.visible = false;
               } else if (cfg.headwear === 'headband_white') {
                 m.color.setHex(0xf8fafc);
                 m.roughness = 0.45;
@@ -1689,7 +1687,7 @@ class PickleballSimulationApp {
         }
       });
 
-      // Add high-contrast white chest sponsor graphic on p2's black jersey + taller crew socks on p0
+      // Add high-contrast white chest sponsor graphic on p2's black jersey
       if (cfg.id === 'p2' && bones.Chest) {
         const chestBadge = new THREE.Mesh(
           new THREE.PlaneGeometry(0.16, 0.055),
@@ -1698,36 +1696,23 @@ class PickleballSimulationApp {
         chestBadge.position.set(0, 0.06, 0.126);
         bones.Chest.add(chestBadge);
       }
-      if (cfg.id === 'p0') {
-        const darkSockMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.75 });
-        for (const side of ['L', 'R']) {
-          const shin = bones[`Shin.${side}`];
-          if (shin) {
-            const crewSock = new THREE.Mesh(
-              new THREE.CylinderGeometry(0.044, 0.036, 0.17, 12),
-              darkSockMat
-            );
-            crewSock.position.set(0, 0.29, 0);
-            shin.add(crewSock);
-          }
-        }
-      }
 
       const headBone = bones.Head;
 
-      // Attach cloned 3D Selkirk Carbon Paddle to Right Hand Bone
-      const rightHandBone = bones['Hand.R'];
+      // Attach cloned 3D Selkirk Carbon Paddle directly to Right Hand Bone (Hand.R / HandR) at the closed fist center
+      const rightHandBone = bones['Hand.R'] || bones.HandR;
       const chestBone = bones.Chest;
       const paddleClone = this.assets.paddle.clone(true);
       paddleClone.traverse((c) => {
         if (c.isMesh) c.castShadow = true;
       });
       if (rightHandBone) {
-        paddleClone.position.set(0, 0.04, 0);
-        paddleClone.rotation.set(Math.PI * 0.5, 0, -Math.PI * 0.5);
+        const gripY = cfg.gender === 'female' ? 0.072 : 0.046;
+        paddleClone.position.set(0, gripY, 0);
+        paddleClone.rotation.set(Math.PI * 0.5 + 0.35, 0.22, -Math.PI * 0.5);
         rightHandBone.add(paddleClone);
       } else {
-        paddleClone.position.set(-0.32, 1.05, 0.28);
+        paddleClone.position.set(-0.22, 1.02, 0.36);
         root.add(paddleClone);
       }
 
@@ -1835,7 +1820,9 @@ class PickleballSimulationApp {
             } else if (/short|bottom|sock/i.test(mName)) {
               m.color.setHex(seat.pantsHex);
               m.roughness = 0.78;
-            } else if (/hair|headband|visor/i.test(mName)) {
+            } else if (/headband|visor/i.test(mName)) {
+              child.visible = false;
+            } else if (/hair/i.test(mName)) {
               m.color.setHex(seat.hairHex);
               m.roughness = 0.78;
             } else if (/shoe|accent/i.test(mName)) {
@@ -2022,14 +2009,14 @@ class PickleballSimulationApp {
       p.mixer.update(0.016);
     });
 
-    this.physics.pos.set(1.52, 0.96, 1.98);
+    this.physics.pos.set(0.77, 0.85, 1.48);
     if (this.ballMesh) {
       this.ballMesh.visible = true;
       this.ballMesh.position.copy(this.physics.pos);
     }
     if (this.strikeFlashMesh) {
       this.strikeFlashMesh.visible = true;
-      this.strikeFlashMesh.position.set(1.52, 0.96, 1.98);
+      this.strikeFlashMesh.position.set(0.77, 0.85, 1.48);
     }
 
     // Clear any previous callouts and spawn the floating neon-green "PERFECT" callout above p1
@@ -2150,6 +2137,12 @@ class PickleballSimulationApp {
 
   startMode(mode, trainingIndex = 0) {
     this.showcaseFreeze = false;
+    if (this.strikeFlashMesh) {
+      this.strikeFlashMesh.visible = false;
+    }
+    const layer = document.getElementById('timing-callouts-layer');
+    if (layer) layer.innerHTML = '';
+    this.timingCallouts = [];
     this.rules.setMode(mode, trainingIndex);
     this.setupPointPositions();
     this.updateModeUI();
@@ -2409,7 +2402,7 @@ class PickleballSimulationApp {
     // If in initial PPA Broadcast Showcase Pose, hold the 4-player action tableau until user interacts
     if (this.showcaseFreeze) {
       if (this.ballMesh) {
-        this.ballMesh.position.set(0.44, 1.02 + Math.sin(this.time * 2.4) * 0.012, -0.58);
+        this.ballMesh.position.set(0.77, 0.85 + Math.sin(this.time * 2.4) * 0.012, 1.48);
         this.ballMesh.rotation.x += scaledDt * 4.2;
       }
       for (const p of this.players) {
@@ -2793,8 +2786,8 @@ class PickleballSimulationApp {
 
         if (p.paddleMesh) {
           p.paddleMesh.rotation.set(
-            Math.PI * 0.5 + THREE.MathUtils.degToRad(this.paddlePitchOffset),
-            THREE.MathUtils.degToRad(this.paddleYawOffset),
+            Math.PI * 0.5 + 0.35 + THREE.MathUtils.degToRad(this.paddlePitchOffset),
+            0.22 + THREE.MathUtils.degToRad(this.paddleYawOffset),
             -Math.PI * 0.5
           );
         }
@@ -2990,10 +2983,10 @@ class PickleballSimulationApp {
     this.cameraPreset = preset;
     const human = this.players[0];
     if (preset === 'broadcast') {
-      this.camera.fov = 38;
+      this.camera.fov = 42;
       this.camera.updateProjectionMatrix();
-      this.camera.position.set(0, 5.55, 11.45);
-      this.controls.target.set(0, 0.42, 0.10);
+      this.camera.position.set(0, 6.10, 14.35);
+      this.controls.target.set(0, 0.35, 0.25);
     } else if (preset === 'player') {
       this.camera.fov = 44;
       this.camera.updateProjectionMatrix();
