@@ -231,32 +231,99 @@ body.broadcast-clean-hud .player-floating-label:not(.has-emotion) {
   pointer-events: auto;
 }
 
-/* 1. TOP-LEFT: Authentic ESPN / PPA Tour TV Scorebug */
-.tv-scorebug {
-  width: 340px;
-  border-radius: 12px;
+/* Floating 3D On-Court Beginner Action Coach Pill */
+.on-court-helper-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 14;
   overflow: hidden;
-  background: var(--bg-glass);
-  border: 1px solid var(--border-glass);
-  backdrop-filter: blur(14px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.42);
+}
+
+.on-court-helper-pill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(8, 17, 34, 0.92);
+  border: 2px solid #facc15;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65), 0 0 14px rgba(250, 204, 21, 0.35);
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  white-space: nowrap;
+  backdrop-filter: blur(8px);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.on-court-helper-pill.state-hit {
+  background: rgba(6, 78, 59, 0.95);
+  border-color: #34d399;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.65), 0 0 18px rgba(52, 211, 153, 0.55);
+}
+
+.on-court-helper-pill.state-wait {
+  background: rgba(120, 53, 15, 0.94);
+  border-color: #fbbf24;
+}
+
+.on-court-helper-pill .helper-icon {
+  font-size: 0.95rem;
+}
+
+.on-court-helper-pill strong {
+  color: #fde047;
+}
+
+/* 1. TOP-LEFT: Prominent BPL India TV Scorebug */
+.tv-scorebug {
+  width: 365px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: rgba(9, 18, 34, 0.92);
+  border: 1.5px solid rgba(255, 255, 255, 0.24);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
+}
+
+.tricolor-bar {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  height: 4px;
+  width: 100%;
+}
+
+.tricolor-bar .tri-saffron {
+  background: #ff9933;
+}
+
+.tricolor-bar .tri-white {
+  background: #ffffff;
+}
+
+.tricolor-bar .tri-green {
+  background: #138808;
 }
 
 .scorebug-header {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 10px;
+  padding: 6px 11px;
   background: linear-gradient(90deg, #091326 0%, #172b4d 100%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  font-size: 0.64rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  font-size: 0.68rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
 }
 
 .live-dot {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: #ef4444;
   box-shadow: 0 0 8px #ef4444;
@@ -269,13 +336,13 @@ body.broadcast-clean-hud .player-floating-label:not(.has-emotion) {
 }
 
 .tour-title {
-  color: #e2e8f0;
+  color: #f8fafc;
   flex: 1;
 }
 
 .srv-context {
   color: var(--accent-gold);
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .scorebug-body {
@@ -293,19 +360,19 @@ body.broadcast-clean-hud .player-floating-label:not(.has-emotion) {
 .team-row {
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 6px 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  gap: 8px;
+  padding: 7px 11px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   transition: background 0.2s ease;
 }
 
 .team-row.active-srv {
-  background: rgba(56, 189, 248, 0.12);
+  background: rgba(56, 189, 248, 0.16);
 }
 
 .team-color-bar {
   width: 4px;
-  height: 18px;
+  height: 20px;
   border-radius: 2px;
 }
 
@@ -318,56 +385,56 @@ body.broadcast-clean-hud .player-floating-label:not(.has-emotion) {
 }
 
 .srv-ball-indicator {
-  font-size: 0.72rem;
-  color: var(--accent-gold);
-  opacity: 0.15;
+  font-size: 0.78rem;
+  opacity: 0.18;
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
 
 .team-row.active-srv .srv-ball-indicator {
   opacity: 1;
-  text-shadow: 0 0 8px rgba(250, 204, 21, 0.8);
+  filter: drop-shadow(0 0 6px rgba(250, 204, 21, 0.85));
 }
 
 .team-tag {
   flex: 1;
-  font-size: 0.74rem;
+  font-size: 0.78rem;
   font-weight: 800;
   letter-spacing: 0.03em;
-  color: #f8fafc;
-}
-
-.score-num {
-  min-width: 28px;
-  text-align: center;
-  padding: 2px 6px;
-  border-radius: 5px;
-  background: rgba(255, 255, 255, 0.1);
-  font-size: 0.96rem;
-  font-weight: 900;
   color: #ffffff;
 }
 
+.score-num {
+  min-width: 34px;
+  text-align: center;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #fde047;
+}
+
 .usapa-call-box {
-  width: 96px;
+  width: 106px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 6px 8px;
-  background: linear-gradient(160deg, rgba(250, 204, 21, 0.22), rgba(234, 179, 8, 0.08));
-  border-left: 1px solid rgba(250, 204, 21, 0.35);
+  background: linear-gradient(160deg, rgba(250, 204, 21, 0.28), rgba(234, 179, 8, 0.12));
+  border-left: 1px solid rgba(250, 204, 21, 0.45);
 }
 
 .call-caption {
-  font-size: 0.56rem;
-  font-weight: 800;
+  font-size: 0.58rem;
+  font-weight: 900;
   letter-spacing: 0.08em;
   color: #fde047;
 }
 
 .score-call-big {
-  font-size: 1.08rem;
+  font-size: 1.22rem;
   font-weight: 900;
   color: #ffffff;
   letter-spacing: 0.03em;
@@ -375,33 +442,99 @@ body.broadcast-clean-hud .player-floating-label:not(.has-emotion) {
 
 .rule-status-strip {
   padding: 5px 10px;
-  font-size: 0.68rem;
-  font-weight: 700;
+  font-size: 0.7rem;
+  font-weight: 800;
   text-align: center;
   letter-spacing: 0.02em;
 }
 
 .rule-status-strip.neutral {
-  background: rgba(56, 189, 248, 0.18);
+  background: rgba(56, 189, 248, 0.2);
   color: #bae6fd;
 }
 
 .rule-status-strip.warn {
-  background: rgba(245, 158, 11, 0.26);
+  background: rgba(245, 158, 11, 0.28);
   color: #fde68a;
 }
 
 .rule-status-strip.ok {
-  background: rgba(16, 185, 129, 0.26);
+  background: rgba(16, 185, 129, 0.28);
   color: #a7f3d0;
 }
 
-/* 2. TOP-CENTER: Mode Switcher, Camera Angles & Utility Bar */
+/* 2. TOP-CENTER: Prominent Live Score Strip + Mode Switcher + Utility Bar */
 .top-center-deck {
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 5px;
+}
+
+.center-scoreboard-pill {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: rgba(9, 18, 34, 0.92);
+  border: 1.5px solid rgba(250, 204, 21, 0.55);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(12px);
+}
+
+.cs-team {
+  display: flex;
+  align-items: center;
   gap: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.cs-team.active-srv {
+  background: rgba(56, 189, 248, 0.2);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+}
+
+.cs-name {
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  color: #f8fafc;
+}
+
+.cs-pts {
+  min-width: 28px;
+  text-align: center;
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: rgba(250, 204, 21, 0.2);
+  border: 1px solid rgba(250, 204, 21, 0.5);
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: #fde047;
+}
+
+.cs-center-call {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 10px;
+  border-left: 1px solid rgba(255, 255, 255, 0.16);
+  border-right: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.cs-call-label {
+  font-size: 0.52rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: #38bdf8;
+}
+
+.cs-call-val {
+  font-size: 0.92rem;
+  font-weight: 900;
+  color: #ffffff;
 }
 
 .mode-tabs {
@@ -640,31 +773,40 @@ body.broadcast-clean-hud .player-floating-label:not(.has-emotion) {
    ============================================================================ */
 .callout-banner {
   position: fixed;
-  top: 98px;
+  top: 204px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 15;
-  min-width: 340px;
-  max-width: 540px;
-  padding: 8px 18px;
+  min-width: 320px;
+  max-width: 520px;
+  padding: 7px 16px;
   border-radius: 12px;
   text-align: center;
-  background: rgba(11, 22, 38, 0.84);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(11, 22, 38, 0.9);
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
   backdrop-filter: blur(10px);
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
   pointer-events: none;
-  transition: all 0.25s ease;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.callout-banner.banner-hidden,
+.callout-banner.info {
+  opacity: 0;
+  transform: translateX(-50%) translateY(-6px);
+  pointer-events: none;
 }
 
 .callout-banner.point {
+  opacity: 1;
   border-color: var(--accent-emerald);
-  background: rgba(6, 78, 59, 0.88);
+  background: rgba(6, 78, 59, 0.92);
 }
 
 .callout-banner.fault {
+  opacity: 1;
   border-color: var(--accent-danger);
-  background: rgba(127, 29, 29, 0.88);
+  background: rgba(127, 29, 29, 0.92);
 }
 
 .callout-title {
@@ -1147,13 +1289,25 @@ body.broadcast-clean-hud .player-floating-label:not(.has-emotion) {
 
 .shot-info span {
   font-size: 0.58rem;
-  color: #94a3b8;
+  color: #cbd5e1;
   white-space: nowrap;
+}
+
+.mini-hint {
+  display: inline-block;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(250, 204, 21, 0.18);
+  border: 1px solid rgba(250, 204, 21, 0.4);
+  font-family: var(--font-sans);
+  font-size: 0.54rem;
+  font-weight: 800;
+  color: #fde047;
 }
 
 /* Primary Strike Action Keycap (SPACE / Left-Click) */
 .strike-keycap-box {
-  min-width: 158px;
+  min-width: 168px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1161,15 +1315,15 @@ body.broadcast-clean-hud .player-floating-label:not(.has-emotion) {
   gap: 4px;
   padding: 6px 12px;
   border-radius: 12px;
-  background: linear-gradient(145deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.18));
-  border: 1.5px solid rgba(16, 185, 129, 0.65);
+  background: linear-gradient(145deg, rgba(16, 185, 129, 0.28), rgba(5, 150, 105, 0.2));
+  border: 1.5px solid rgba(16, 185, 129, 0.72);
   color: #ffffff;
   cursor: pointer;
   transition: all 0.12s ease;
 }
 
 .strike-keycap-box:hover {
-  background: linear-gradient(145deg, rgba(16, 185, 129, 0.38), rgba(5, 150, 105, 0.28));
+  background: linear-gradient(145deg, rgba(16, 185, 129, 0.42), rgba(5, 150, 105, 0.32));
 }
 
 .strike-keycap-box.pressed,
@@ -1228,14 +1382,22 @@ body.broadcast-clean-hud .player-floating-label:not(.has-emotion) {
 .spin-key-row {
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   margin-top: 2px;
 }
 
-.spin-key-row span {
-  font-size: 0.56rem;
-  color: #cbd5e1;
-  margin-left: 3px;
+.clickable-keycap {
+  width: auto !important;
+  min-width: 44px;
+  height: 22px !important;
+  padding: 0 6px;
+  cursor: pointer;
+  font-size: 0.6rem !important;
+}
+
+.clickable-keycap:hover {
+  border-color: var(--accent-sky);
+  color: #7dd3fc;
 }
 
 /* ============================================================================
@@ -1243,7 +1405,7 @@ body.broadcast-clean-hud .player-floating-label:not(.has-emotion) {
    ============================================================================ */
 #rules-modal {
   margin: auto;
-  max-width: 720px;
+  max-width: 740px;
   width: 92vw;
   border: 1px solid rgba(56, 189, 248, 0.4);
   border-radius: 18px;
@@ -1338,32 +1500,16 @@ body.broadcast-clean-hud .player-floating-label:not(.has-emotion) {
 }
 
 /* ============================================================================
-   CLEAN BROADCAST TV HUD MODE (Unobstructed PPA Tour 2025 Arena & Court View)
+   CLEAN BROADCAST TV HUD MODE (Always keeps Scorebug visible!)
    ============================================================================ */
-body.broadcast-clean-hud .tv-scorebug,
 body.broadcast-clean-hud .top-right-broadcast,
-body.broadcast-clean-hud .callout-banner,
 body.broadcast-clean-hud .hud-left,
-body.broadcast-clean-hud .hud-bottom {
+body.broadcast-clean-hud .hud-bottom,
+body.broadcast-clean-hud .on-court-helper-layer {
   opacity: 0;
   pointer-events: none;
   transform: translateY(10px) scale(0.95);
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
-body.broadcast-clean-hud .top-center-deck {
-  position: fixed;
-  bottom: 6px;
-  left: 50%;
-  transform: translateX(-50%) scale(0.76);
-  transform-origin: bottom center;
-  opacity: 0.14;
-  z-index: 30;
-  transition: opacity 0.22s ease, transform 0.22s ease;
-}
-
-body.broadcast-clean-hud .top-center-deck:hover {
-  opacity: 0.96;
-  transform: translateX(-50%) scale(0.92);
-}
 

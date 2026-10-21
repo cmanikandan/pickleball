@@ -21,20 +21,29 @@ class PickleballSimulationApp {
     this.sound = new SoundEngine();
     this.rules = new PickleballRules();
     this.ai = new PickleballAI();
+    this.ai.difficulty = 'club'; // Default beginner-friendly Club AI
 
     this.lastFrameTime = performance.now();
     this.time = 0;
-    this.timeScale = 1.0;
+    this.timeScale = 0.75; // Default Easy 75% game speed for newcomers
+    this.paceMode = 'easy'; // 'easy' (0.75) | 'normal' (0.90) | 'pro' (1.0)
 
-    // Input & Explicit Paddle Contact Controls
+    // Input, Laptop Trackpad & Explicit Paddle Contact Controls
     this.keys = {};
     this.aimTarget = new THREE.Vector3(-1.35, 0.0368, -4.4);
     this.selectedShotType = 'drive'; // 'drive' | 'dink' | 'drop' | 'volley' | 'smash' | 'slice'
     this.recommendedShotType = 'drive';
+    this.smartShotAssist = true; // Automatically picks best shot (Normal / Dink / Lob / Volley / Smash)
+    this.manualShotOverride = false;
+    this.trackpadMoveAssist = true; // Moving cursor on laptop trackpad glides player & aims shot
+    this.trackpadCourtX = 0;
+    this.pendingSwingTimer = 0; // Forgiving 480ms swing buffer so tapping early still hits cleanly
+    this.rightClickDownPos = null;
+
     this.paddlePitchOffset = 0; // degrees (-15 to +20)
     this.paddleYawOffset = 0;   // degrees (-25 to +25)
     this.paddleBrushOffset = 0; // degrees (-25 to +25)
-    this.shotPower = 0.78;
+    this.shotPower = 0.80;
     this.isChargingSwing = false;
     this.chargeStartTime = 0;
     this.autoFootworkAssist = true;
@@ -97,7 +106,7 @@ class PickleballSimulationApp {
     this.renderer.toneMappingExposure = 1.08;
     this.renderer.autoClear = false;
 
-    // Generate PPA Tour 2025 Championship Indoor Arena PMREM Environment Map
+    // Generate BPL 2025 Championship Indoor Arena PMREM Environment Map
     this.buildOutdoorEnvironmentMap();
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -107,14 +116,15 @@ class PickleballSimulationApp {
     this.controls.minDistance = 1.2;
     this.controls.maxDistance = 36;
     this.controls.target.set(0, 0.35, 0.25);
-    // Right-click drag orbits camera so Left-click is dedicated to paddle strikes!
+    this.controls.enableZoom = false; // Reserve 2-finger trackpad scroll for Topspin/Backspin!
+    // Right-click drag orbits camera while quick 2-finger tap / right-click triggers High Lob!
     this.controls.mouseButtons = {
       LEFT: null,
       MIDDLE: THREE.MOUSE.DOLLY,
       RIGHT: THREE.MOUSE.ROTATE,
     };
 
-    // PPA Tour 2025 Championship Indoor/Night Arena Spotlight Illumination
+    // BPL 2025 Championship Indoor/Night Arena Spotlight Illumination
     const hemiLight = new THREE.HemisphereLight(0xdbeafe, 0x0b183d, 1.08);
     this.scene.add(hemiLight);
 
@@ -141,11 +151,12 @@ class PickleballSimulationApp {
     faceFillFar.position.set(-2.0, 5.0, 11.0);
     this.scene.add(rimLight, faceFillNear, faceFillFar);
 
-    // Build PPA Tour 2025 Championship Arena, Back Wall Murals, LED Barriers, Planters, VIP Lounge & Camera Tripod
+    // Build Bharat Pickleball League (BPL 2025) Championship Arena, Back Wall Murals, LED Barriers, Planters, VIP Lounge & Camera Tripod
     this.buildRealisticOutdoorStadium();
 
-    // 3D Court Overlays (Kitchen, Service Box, Trajectory, Bounce Rings)
+    // 3D Court Overlays (Kitchen, Service Box, Trajectory, Bounce Rings) — enabled by default for beginners!
     this.overlays = new CourtOverlays(this.scene);
+    this.overlays.showGuides = true;
 
     window.addEventListener('resize', () => {
       this.camera.aspect = window.innerWidth / window.innerHeight;
@@ -155,7 +166,7 @@ class PickleballSimulationApp {
   }
 
   /**
-   * Generates a procedural HDR-style PPA Tour 2025 Championship Indoor Arena PMREM environment map
+   * Generates a procedural HDR-style BPL 2025 Championship Indoor Arena PMREM environment map
    * so carbon-fiber paddles, stadium steel, and royal-blue acrylic court surfaces have crisp specular sheen.
    */
   buildOutdoorEnvironmentMap() {
@@ -204,7 +215,8 @@ class PickleballSimulationApp {
   }
 
   /**
-   * Builds a helper logo painter on a 2D canvas context for PPA Tour 2025 sponsor graphics
+   * Builds a helper logo painter on a 2D canvas context for 100% original, copyright-free
+   * Indian Pickleball Tour (Bharat Pickleball League / BPL 2025) arena & court graphics
    */
   drawSponsorLogoOnCanvas(ctx, brand, cx, cy, scale = 1.0, color = '#ffffff') {
     ctx.save();
@@ -215,91 +227,110 @@ class PickleballSimulationApp {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    if (brand === 'OS1st') {
-      ctx.font = '900 84px "Arial Black", Inter, sans-serif';
-      ctx.fillText('OS1', -22, 4);
-      ctx.font = '900 44px "Arial Black", Inter, sans-serif';
-      ctx.fillText('st', 78, -22);
-    } else if (brand === 'THORLO') {
-      ctx.font = '900 72px "Arial Black", Impact, Inter, sans-serif';
-      ctx.letterSpacing = '2px';
-      ctx.fillText('THORLO', 0, 0);
-    } else if (brand === 'PPA_2025') {
-      // Top: Outlined geometric PPA letters
-      ctx.lineWidth = 5;
-      ctx.font = '900 105px "Arial Black", Impact, sans-serif';
-      ctx.strokeText('PPA', 0, -76);
-      ctx.lineWidth = 2;
-      ctx.strokeText('PPA', 0, -76);
-      // Middle: PICKLEBALL TOUR
-      ctx.font = '800 32px Inter, "Arial Black", sans-serif';
+    if (brand === 'OS1st' || brand === 'SURYA_FIT') {
+      // Original Indian Athletic Brand: SURYA FIT with rising sun arc
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.arc(0, -34, 24, Math.PI, 0, false);
+      ctx.stroke();
+      ctx.font = '900 58px "Arial Black", Inter, sans-serif';
+      ctx.fillText('SURYA', 0, 8);
+      ctx.font = '800 24px Inter, sans-serif';
       ctx.letterSpacing = '4px';
-      ctx.fillText('PICKLEBALL TOUR', 0, -8);
-      // Bottom: Heavy italic 2025
-      ctx.font = 'italic 900 86px "Arial Black", Impact, sans-serif';
+      ctx.fillText('FIT INDIA', 0, 44);
+    } else if (brand === 'THORLO' || brand === 'AGNI_SPORT') {
+      ctx.font = '900 66px "Arial Black", Impact, Inter, sans-serif';
       ctx.letterSpacing = '2px';
-      ctx.fillText('2025', -4, 62);
-    } else if (brand === 'SELKIRK_WALL') {
-      // Iconic curved Selkirk S ribbon emblem above SELKIRK wordmark
-      ctx.beginPath();
-      ctx.lineWidth = 18;
-      ctx.lineCap = 'round';
-      ctx.moveTo(45, -92);
-      ctx.bezierCurveTo(-55, -95, -55, -45, 5, -38);
-      ctx.bezierCurveTo(65, -30, 65, 18, -45, 15);
-      ctx.stroke();
-      ctx.font = 'italic 900 54px "Arial Black", Inter, sans-serif';
+      ctx.fillText('AGNI', 0, -10);
+      ctx.font = '800 24px Inter, sans-serif';
       ctx.letterSpacing = '5px';
-      ctx.fillText('SELKIRK', 4, 66);
-    } else if (brand === 'VERSIX') {
-      ctx.font = 'italic 900 38px "Arial Black", Inter, sans-serif';
-      ctx.fillText('VERSI', -18, -4);
-      // Stylized oversized X
-      ctx.lineWidth = 7;
-      ctx.beginPath();
-      ctx.moveTo(44, -28);
-      ctx.lineTo(84, 24);
-      ctx.moveTo(88, -32);
-      ctx.lineTo(38, 26);
-      ctx.stroke();
-      ctx.font = '700 15px Inter, sans-serif';
-      ctx.letterSpacing = '2px';
-      ctx.fillText('PICKLEBALL', -10, 22);
-    } else if (brand === 'FILA_BOX') {
+      ctx.fillText('SPORT', 0, 32);
+    } else if (brand === 'PPA_2025' || brand === 'BPL_2025') {
+      // Top: Outlined geometric BPL letters (Bharat Pickleball League)
       ctx.lineWidth = 5;
-      ctx.strokeRect(-42, -42, 84, 84);
-      // F bars inside square
-      ctx.fillRect(-24, -26, 48, 13);
-      ctx.fillRect(-24, -6, 38, 13);
-      ctx.fillRect(-24, -6, 14, 34);
-    } else if (brand === 'ERNE') {
-      // 3 angled wing bars + erne lowercase
+      ctx.font = '900 104px "Arial Black", Impact, sans-serif';
+      ctx.strokeText('BPL', 0, -76);
+      ctx.lineWidth = 2;
+      ctx.strokeText('BPL', 0, -76);
+      // Indian Tricolor Accent Bars
+      ctx.fillStyle = '#ff9933';
+      ctx.fillRect(-140, -34, 90, 6);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-45, -34, 90, 6);
+      ctx.fillStyle = '#138808';
+      ctx.fillRect(50, -34, 90, 6);
+      ctx.fillStyle = color;
+      // Middle: BHARAT PICKLEBALL
+      ctx.font = '800 30px Inter, "Arial Black", sans-serif';
+      ctx.letterSpacing = '3px';
+      ctx.fillText('BHARAT PICKLEBALL', 0, -6);
+      // Bottom: Heavy italic INDIA 2025
+      ctx.font = 'italic 900 68px "Arial Black", Impact, sans-serif';
+      ctx.letterSpacing = '2px';
+      ctx.fillText('INDIA 2025', -2, 60);
+    } else if (brand === 'SELKIRK_WALL' || brand === 'VAYU_AERO') {
+      // Original Vayu Aero Diamond-Chevron Emblem above VAYU AERO wordmark
+      ctx.lineWidth = 14;
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(0, -102);
+      ctx.lineTo(54, -48);
+      ctx.lineTo(0, 6);
+      ctx.lineTo(-54, -48);
+      ctx.closePath();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-26, -42);
+      ctx.lineTo(0, -68);
+      ctx.lineTo(26, -42);
+      ctx.stroke();
+      ctx.font = 'italic 900 48px "Arial Black", Inter, sans-serif';
+      ctx.letterSpacing = '4px';
+      ctx.fillText('VAYU AERO', 2, 62);
+    } else if (brand === 'VERSIX' || brand === 'GARUDA_PRO') {
+      ctx.font = 'italic 900 36px "Arial Black", Inter, sans-serif';
+      ctx.fillText('GARUDA', 0, -8);
+      ctx.font = '700 16px Inter, sans-serif';
+      ctx.letterSpacing = '3px';
+      ctx.fillText('PRO INDIA', 0, 22);
+    } else if (brand === 'FILA_BOX' || brand === 'BPL_BOX') {
+      ctx.lineWidth = 5;
+      ctx.strokeRect(-44, -44, 88, 88);
+      ctx.fillStyle = '#ff9933';
+      ctx.fillRect(-30, -30, 60, 12);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = '900 32px "Arial Black", Inter, sans-serif';
+      ctx.fillText('BPL', 0, 2);
+      ctx.fillStyle = '#138808';
+      ctx.fillRect(-30, 18, 60, 12);
+    } else if (brand === 'ERNE' || brand === 'KHEL') {
+      // 3 angled speed bars + khel lowercase
       for (let i = 0; i < 3; i++) {
         ctx.fillRect(-82 + i * 4, -16 + i * 12, 18 - i * 3, 6);
       }
       ctx.font = '800 44px Inter, sans-serif';
-      ctx.fillText('erne', 12, 0);
-    } else if (brand === 'TOPCOURT') {
-      ctx.fillRect(-88, -12, 5, 24);
-      ctx.fillRect(-79, -12, 5, 24);
-      ctx.font = '800 26px Inter, sans-serif';
+      ctx.fillText('khel', 12, 0);
+    } else if (brand === 'TOPCOURT' || brand === 'DECCAN_PRO') {
+      ctx.fillRect(-94, -12, 5, 24);
+      ctx.fillRect(-85, -12, 5, 24);
+      ctx.font = '800 24px Inter, sans-serif';
       ctx.letterSpacing = '1px';
-      ctx.fillText('TOPCOURT', 12, 1);
-    } else if (brand === 'PB_CENTRAL') {
-      ctx.font = '900 28px Inter, sans-serif';
-      ctx.fillText('Pickleball', 0, -13);
-      ctx.font = '800 26px Inter, sans-serif';
-      ctx.fillText('⊕Central', 0, 16);
-    } else if (brand === 'PB_COM') {
-      // Stylized P court icon above PICKLEBALL.COM
+      ctx.fillText('DECCAN PRO', 12, 1);
+    } else if (brand === 'PB_CENTRAL' || brand === 'MUMBAI_ARENA') {
+      ctx.font = '900 27px Inter, sans-serif';
+      ctx.fillText('MUMBAI', 0, -13);
+      ctx.font = '800 25px Inter, sans-serif';
+      ctx.fillText('⊕ARENA', 0, 16);
+    } else if (brand === 'PB_COM' || brand === 'BHARAT_PB_IN') {
+      // Stylized court icon above BHARATPICKLEBALL.IN
       ctx.lineWidth = 5;
       ctx.strokeRect(-18, -36, 36, 32);
       ctx.beginPath();
       ctx.moveTo(0, -36);
       ctx.lineTo(0, -4);
       ctx.stroke();
-      ctx.font = 'italic 900 24px "Arial Black", Inter, sans-serif';
-      ctx.fillText('PICKLEBALL.COM', 0, 22);
+      ctx.font = 'italic 900 20px "Arial Black", Inter, sans-serif';
+      ctx.fillText('BHARATPICKLEBALL.IN', 0, 22);
     }
     ctx.restore();
   }
@@ -868,41 +899,46 @@ class PickleballSimulationApp {
       ctx.restore();
     };
 
-    // Stencil A: Both Kitchens (Near Z = +1.08m & Far Z = -1.08m) -> Huge dark-navy SELKIRK™ wordmark
-    const drawKitchenSelkirk = () => {
+    // Stencil A: Both Kitchens (Near Z = +1.08m & Far Z = -1.08m) -> Huge dark-navy BHARAT PRO wordmark
+    const drawKitchenBharatPro = () => {
       ctx.save();
-      ctx.scale(1.62, 0.86);
+      ctx.scale(1.42, 0.86);
       ctx.fillStyle = 'rgba(15, 34, 102, 0.82)';
-      ctx.font = 'italic 900 0.56px "Arial Black", Impact, Inter, sans-serif';
+      ctx.font = 'italic 900 0.50px "Arial Black", Impact, Inter, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.letterSpacing = '0.09px';
-      ctx.fillText('SELKIRK', 0, 0);
-      ctx.font = '800 0.14px Inter, sans-serif';
-      ctx.fillText('TM', 1.56, -0.16);
+      ctx.letterSpacing = '0.07px';
+      ctx.fillText('BHARAT PRO', 0, 0);
+      ctx.font = '800 0.13px Inter, sans-serif';
+      ctx.fillText('IND', 1.88, -0.15);
       ctx.restore();
     };
-    withWorldTransform(0, 1.08, 0, drawKitchenSelkirk);
-    withWorldTransform(0, -1.08, 0, drawKitchenSelkirk);
+    withWorldTransform(0, 1.08, 0, drawKitchenBharatPro);
+    withWorldTransform(0, -1.08, 0, drawKitchenBharatPro);
 
-    // Stencil B: Far Court PPA PICKLEBALL TOUR Stacked Logo (at Z = -7.35m right above far baseline T-junction)
+    // Stencil B: Far Court BPL • BHARAT PICKLEBALL Stacked Logo with Indian Tricolor bar (at Z = -7.35m)
     withWorldTransform(0, -7.35, 0, () => {
       ctx.save();
       ctx.scale(1.18, 0.92);
-      ctx.fillStyle = 'rgba(248, 250, 252, 0.92)';
-      ctx.strokeStyle = 'rgba(248, 250, 252, 0.92)';
+      ctx.fillStyle = 'rgba(248, 250, 252, 0.94)';
+      ctx.strokeStyle = 'rgba(248, 250, 252, 0.94)';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.font = '900 0.44px "Arial Black", Impact, sans-serif';
-      ctx.fillText('PPA', 0, 0.14);
-      ctx.font = '800 0.13px Inter, "Arial Black", sans-serif';
-      ctx.fillText('PICKLEBALL TOUR', 0, -0.14);
-      ctx.lineWidth = 0.022;
-      ctx.strokeRect(-0.74, -0.26, 1.48, 0.04);
+      ctx.fillText('BPL', 0, 0.14);
+      ctx.font = '800 0.125px Inter, "Arial Black", sans-serif';
+      ctx.fillText('BHARAT PICKLEBALL', 0, -0.14);
+      // Indian Tricolor bar above/below
+      ctx.fillStyle = '#ff9933';
+      ctx.fillRect(-0.75, -0.27, 0.48, 0.036);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-0.24, -0.27, 0.48, 0.036);
+      ctx.fillStyle = '#138808';
+      ctx.fillRect(0.27, -0.27, 0.48, 0.036);
       ctx.restore();
     });
 
-    // Stencil C: Left Mid-Apron `erne` wordmark + 3-bar wing icon (at X = -3.72m, Z = -2.95m, rotated along sideline)
+    // Stencil C: Left Mid-Apron `khel` wordmark + 3-bar speed icon (at X = -3.72m, Z = -2.95m, rotated along sideline)
     withWorldTransform(-3.72, -2.95, -Math.PI / 2, () => {
       ctx.save();
       ctx.fillStyle = 'rgba(248, 250, 252, 0.94)';
@@ -913,20 +949,19 @@ class PickleballSimulationApp {
       ctx.font = '900 0.50px "Arial Black", Inter, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('erne', 0.16, 0);
+      ctx.fillText('khel', 0.16, 0);
       ctx.restore();
     });
 
-    // Stencil D: Left Near-Apron `PICKLEBALL.COM` wordmark + P court emblem (at X = -4.15m, Z = +4.65m)
+    // Stencil D: Left Near-Apron `BHARATPICKLEBALL.IN` wordmark + court emblem (at X = -4.08m, Z = +4.65m)
     withWorldTransform(-4.08, 4.65, -Math.PI / 2, () => {
       ctx.save();
       ctx.fillStyle = 'rgba(248, 250, 252, 0.95)';
       ctx.strokeStyle = 'rgba(248, 250, 252, 0.95)';
-      ctx.font = 'italic 900 0.42px "Arial Black", Impact, sans-serif';
+      ctx.font = 'italic 900 0.36px "Arial Black", Impact, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('PICKLEBALL.COM', 0, 0);
-      // Stylized P emblem on outer left (which is -Y in rotated -90 deg space)
+      ctx.fillText('BHARATPICKLEBALL.IN', 0, 0);
       ctx.lineWidth = 0.065;
       ctx.beginPath();
       ctx.roundRect(-0.42, -0.92, 0.64, 0.54, 0.14);
@@ -938,7 +973,7 @@ class PickleballSimulationApp {
       ctx.restore();
     });
 
-    // Stencil E: Right Mid-Apron `VERSIX PICKLEBALL` logo (at X = +3.74m, Z = -2.95m, rotated along sideline)
+    // Stencil E: Right Mid-Apron `GARUDA PRO INDIA` logo (at X = +3.74m, Z = -2.95m, rotated along sideline)
     withWorldTransform(3.74, -2.95, Math.PI / 2, () => {
       ctx.save();
       ctx.fillStyle = 'rgba(248, 250, 252, 0.92)';
@@ -946,27 +981,20 @@ class PickleballSimulationApp {
       ctx.font = 'italic 900 0.36px "Arial Black", Inter, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('VERSI', -0.18, -0.04);
-      ctx.lineWidth = 0.055;
-      ctx.beginPath();
-      ctx.moveTo(0.38, -0.26);
-      ctx.lineTo(0.84, 0.24);
-      ctx.moveTo(0.88, -0.30);
-      ctx.lineTo(0.32, 0.28);
-      ctx.stroke();
+      ctx.fillText('GARUDA', 0, -0.04);
       ctx.font = '800 0.13px Inter, sans-serif';
-      ctx.fillText('PICKLEBALL', -0.12, 0.20);
+      ctx.fillText('PRO INDIA', 0, 0.20);
       ctx.restore();
     });
 
-    // Stencil F: Right Near-Apron huge `THORLO` wordmark (at X = +4.18m, Z = +4.65m, rotated along sideline)
+    // Stencil F: Right Near-Apron huge `AGNI SPORT` wordmark (at X = +4.18m, Z = +4.65m, rotated along sideline)
     withWorldTransform(4.18, 4.65, Math.PI / 2, () => {
       ctx.save();
       ctx.fillStyle = 'rgba(248, 250, 252, 0.95)';
-      ctx.font = '900 0.62px "Arial Black", Impact, sans-serif';
+      ctx.font = '900 0.54px "Arial Black", Impact, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('THORLO', 0, 0);
+      ctx.fillText('AGNI SPORT', 0, 0);
       ctx.restore();
     });
 
@@ -1107,9 +1135,9 @@ class PickleballSimulationApp {
       }
     });
 
-    // 3. Portable Pro Net Hardware: Bottom Black Stabilizer Bar, Post Base Feet, Center Strap & FILA Side Banners
+    // 3. Portable Pro Net Hardware: Bottom Black Stabilizer Bar, Post Base Feet, Center Strap & BPL Side Banners
     const netHardwareGroup = new THREE.Group();
-    netHardwareGroup.name = 'PPA_Portable_Net_Hardware';
+    netHardwareGroup.name = 'BPL_Portable_Net_Hardware';
 
     // Bottom horizontal black steel tension stabilizer bar right above the court surface
     const bottomBar = new THREE.Mesh(
@@ -1153,33 +1181,43 @@ class PickleballSimulationApp {
       netHardwareGroup.add(post, baseFoot);
     }
 
-    // Two Vertical `FILA` Banner Panels at Left (x = -2.72m) & Right (x = +2.72m) ends of the net
-    const filaCanvas = document.createElement('canvas');
-    filaCanvas.width = 256;
-    filaCanvas.height = 512;
-    const fCtx = filaCanvas.getContext('2d');
+    // Two Vertical `BPL INDIA` Banner Panels at Left (x = -2.72m) & Right (x = +2.72m) ends of the net
+    const bplNetCanvas = document.createElement('canvas');
+    bplNetCanvas.width = 256;
+    bplNetCanvas.height = 512;
+    const fCtx = bplNetCanvas.getContext('2d');
     // Royal-blue outer vertical sleeve
     fCtx.fillStyle = '#15349c';
     fCtx.fillRect(0, 0, 256, 512);
     // Crisp white square logo card
     fCtx.fillStyle = '#ffffff';
     fCtx.fillRect(22, 92, 212, 328);
-    // Authentic FILA 'F' logo: Navy top bar, Red middle bar, Navy vertical stem
-    fCtx.fillStyle = '#0c1d5e';
+    // Indian Tricolor top & bottom accent bars inside the card
+    fCtx.fillStyle = '#ff9933';
+    fCtx.fillRect(42, 118, 172, 24);
+    fCtx.fillStyle = '#138808';
+    fCtx.fillRect(42, 370, 172, 24);
+    // Navy BPL Diamond Crest in the center
+    fCtx.strokeStyle = '#0c1d5e';
+    fCtx.lineWidth = 12;
     fCtx.beginPath();
-    fCtx.roundRect(54, 138, 148, 46, [18, 0, 0, 0]);
-    fCtx.fill();
-    // Vertical navy stem on bottom-left
-    fCtx.fillRect(54, 212, 52, 162);
-    // Vibrant crimson-red middle bar
-    fCtx.fillStyle = '#e11d48';
-    fCtx.fillRect(114, 212, 82, 46);
+    fCtx.moveTo(128, 165);
+    fCtx.lineTo(192, 232);
+    fCtx.lineTo(128, 299);
+    fCtx.lineTo(64, 232);
+    fCtx.closePath();
+    fCtx.stroke();
+    fCtx.fillStyle = '#0c1d5e';
+    fCtx.font = '900 44px "Arial Black", Impact, sans-serif';
+    fCtx.textAlign = 'center';
+    fCtx.textBaseline = 'middle';
+    fCtx.fillText('BPL', 128, 336);
 
-    const filaTex = new THREE.CanvasTexture(filaCanvas);
-    filaTex.colorSpace = THREE.SRGBColorSpace;
-    filaTex.anisotropy = maxAniso;
-    const filaMat = new THREE.MeshStandardMaterial({
-      map: filaTex,
+    const bplNetTex = new THREE.CanvasTexture(bplNetCanvas);
+    bplNetTex.colorSpace = THREE.SRGBColorSpace;
+    bplNetTex.anisotropy = maxAniso;
+    const bplNetMat = new THREE.MeshStandardMaterial({
+      map: bplNetTex,
       roughness: 0.45,
       metalness: 0.05,
     });
@@ -1187,7 +1225,7 @@ class PickleballSimulationApp {
     for (const bx of [-2.72, 2.72]) {
       const bannerBox = new THREE.Mesh(
         new THREE.BoxGeometry(0.46, 0.78, 0.032),
-        filaMat
+        bplNetMat
       );
       bannerBox.position.set(bx, 0.465, 0);
       bannerBox.castShadow = true;
@@ -1198,8 +1236,8 @@ class PickleballSimulationApp {
   }
 
   /**
-   * Upgrades `this.assets.paddle` with a high-contrast Selkirk Pro Carbon Paddle Texture
-   * (matte T700 raw carbon-fiber weave, crimson-red/white perimeter edge trim, and white Selkirk `S` logo).
+   * Upgrades `this.assets.paddle` with a high-contrast Vayu Aero / Bharat Pro Carbon Paddle Texture
+   * (matte T700 raw carbon-fiber weave, crimson-red/white perimeter edge trim, and white Diamond-Chevron crest).
    */
   upgradePaddleMaterials(paddleRoot) {
     const c = document.createElement('canvas');
@@ -1223,22 +1261,37 @@ class PickleballSimulationApp {
       ctx.stroke();
     }
 
-    // Selkirk crimson-red & white inner perimeter accent stripe
+    // Crimson-red & saffron-orange inner perimeter accent stripe
     ctx.strokeStyle = '#e11d48';
     ctx.lineWidth = 22;
     ctx.beginPath();
     ctx.roundRect(36, 36, 440, 440, 64);
     ctx.stroke();
 
-    // White Selkirk 'S' ribbon emblem in center of paddle face
+    // Original White Vayu Aero / Bharat Pro Diamond-Chevron Emblem in center of paddle face
     ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 30;
+    ctx.lineWidth = 22;
+    ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(315, 145);
-    ctx.bezierCurveTo(155, 140, 155, 240, 256, 255);
-    ctx.bezierCurveTo(355, 270, 355, 370, 195, 365);
+    ctx.moveTo(256, 130);
+    ctx.lineTo(356, 235);
+    ctx.lineTo(256, 340);
+    ctx.lineTo(156, 235);
+    ctx.closePath();
     ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(202, 250);
+    ctx.lineTo(256, 194);
+    ctx.lineTo(310, 250);
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'italic 900 34px "Arial Black", Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('BHARAT PRO', 256, 392);
 
     const paddleFaceTex = new THREE.CanvasTexture(c);
     paddleFaceTex.colorSpace = THREE.SRGBColorSpace;
@@ -2137,6 +2190,8 @@ class PickleballSimulationApp {
 
   startMode(mode, trainingIndex = 0) {
     this.showcaseFreeze = false;
+    this.pendingSwingTimer = 0;
+    this.manualShotOverride = false;
     if (this.strikeFlashMesh) {
       this.strikeFlashMesh.visible = false;
     }
@@ -2149,14 +2204,14 @@ class PickleballSimulationApp {
     this.updateScoreHUD();
     if (mode === 'doubles') {
       this.showBanner(
-        'PPA Championship Doubles (2v2)',
-        'Official USAPA 0-0-2 Side-Out Scoring • Serve diagonally into the green service box!',
+        '🇮🇳 BPL Championship Doubles (2v2)',
+        'Tap Trackpad / SPACE to Serve into the green box • 2-Finger Tap or [L] = High Lob • 2-Finger Scroll = Spin!',
         'info'
       );
     } else if (mode === 'singles') {
       this.showBanner(
-        'PPA Tour Singles (1v1)',
-        'Even score serves from Right (Deuce) • Odd score serves from Left (Ad) • Double-Bounce Rule active!',
+        '🇮🇳 BPL Tour Singles (1v1)',
+        'Tap Trackpad / SPACE to Hit • Move cursor on trackpad to aim & glide • Double-Bounce Rule active!',
         'info'
       );
     } else if (mode === 'training' && trainingIndex > 0) {
@@ -2168,6 +2223,8 @@ class PickleballSimulationApp {
   setupPointPositions() {
     this.rules.updateServerAndReceiver();
     this.ai.computePreServePositions(this.rules, this.players);
+    this.pendingSwingTimer = 0;
+    this.manualShotOverride = false;
 
     this.players.forEach((p) => {
       p.root.visible = p.active;
@@ -2188,10 +2245,11 @@ class PickleballSimulationApp {
       this.physics.resetBallAtPlayer(human.pos, 0);
       this.aimTarget.set(-1.25, 0.0368, -1.45);
       this.showBanner(
-        'Lesson 1: Crosscourt Kitchen Dink',
-        'Press SPACE or Left-Click to feed a soft Crosscourt Dink into the Kitchen!',
+        'Lesson 1: Soft Net Dink (Kitchen Rally)',
+        'Tap Trackpad / Left-Click or press SPACE to hit a soft Crosscourt Dink into the blue Kitchen!',
         'info'
       );
+      this.updateScoreHUD();
       return;
     }
 
@@ -2215,7 +2273,7 @@ class PickleballSimulationApp {
     }
 
     if (!server.isHuman) {
-      this.autoServeCooldown = 1.35;
+      this.autoServeCooldown = 1.25;
     } else {
       this.autoServeCooldown = 0;
     }
@@ -2294,7 +2352,8 @@ class PickleballSimulationApp {
     }
 
     this.updateTelemetryHUD(telemetry);
-    hitter.swingCooldown = 0.42;
+    this.updateScoreHUD();
+    hitter.swingCooldown = 0.38;
 
     if (!validation.legal) {
       this.handleFaultOrPointEnd(1 - hitter.team, validation.reason, hitter);
@@ -2323,7 +2382,7 @@ class PickleballSimulationApp {
       this.rules.rallyShotCount === 3 &&
       (shotType === 'drop' || shotType === 'dink')
     ) {
-      this.advanceTrainingGoal('Textbook 3rd-Shot Drop executed after Bounce #2!');
+      this.advanceTrainingGoal('Textbook 3rd-Shot Drop / Lob executed after Bounce #2!');
     } else if (idx === 4) {
       this.advanceTrainingGoal(
         `${telemetry.shotLabel} (${telemetry.spinRpm} RPM ${telemetry.spinType}) executed!`
@@ -2348,6 +2407,7 @@ class PickleballSimulationApp {
   handleFaultOrPointEnd(winnerTeam, reason, faultingPlayer = null) {
     const res = this.rules.resolveRallyWinner(winnerTeam, reason);
     this.physics.inPlay = false;
+    this.pendingSwingTimer = 0;
     this.crowdCheerTimer = 2.6;
 
     // Trigger full-body & facial human emotions (Celebration fist-pump vs Frustrated slump!)
@@ -2399,7 +2459,7 @@ class PickleballSimulationApp {
     const scaledDt = dt * this.timeScale;
     this.time += scaledDt;
 
-    // If in initial PPA Broadcast Showcase Pose, hold the 4-player action tableau until user interacts
+    // If in initial BPL Broadcast Showcase Pose, hold the 4-player action tableau until user interacts
     if (this.showcaseFreeze) {
       if (this.ballMesh) {
         this.ballMesh.position.set(0.77, 0.85 + Math.sin(this.time * 2.4) * 0.012, 1.48);
@@ -2421,6 +2481,8 @@ class PickleballSimulationApp {
         showcaseFreeze: true,
       });
       this.updateTimingCallouts(scaledDt);
+      this.updateLiveKeyPrompt();
+      this.updateOnCourtHelper();
       this.controls.update();
       this.updatePlayerLabels();
       return;
@@ -2429,7 +2491,10 @@ class PickleballSimulationApp {
     // 1. Update charging swing bar if player is holding SPACE / Left-Click
     if (this.isChargingSwing) {
       const heldSec = (performance.now() - this.chargeStartTime) / 1000;
-      this.shotPower = THREE.MathUtils.clamp(0.55 + Math.sin(heldSec * 2.8) * 0.42, 0.35, 1.0);
+      this.shotPower =
+        heldSec < 0.22
+          ? 0.80
+          : THREE.MathUtils.clamp(0.68 + Math.sin((heldSec - 0.15) * 2.6) * 0.30, 0.45, 1.0);
       const pSlider = document.getElementById('slider-power');
       const pVal = document.getElementById('val-power');
       const chargeFill = document.getElementById('space-charge-fill');
@@ -2437,6 +2502,12 @@ class PickleballSimulationApp {
       if (pSlider) pSlider.value = pct;
       if (pVal) pVal.textContent = `${pct}%`;
       if (chargeFill) chargeFill.style.width = `${pct}%`;
+    }
+
+    // 1b. Process forgiving 480ms swing buffer so tapping slightly early still hits cleanly!
+    if (this.pendingSwingTimer > 0) {
+      this.pendingSwingTimer -= dt;
+      this.tryExecuteBufferedHumanSwing();
     }
 
     // 2. Check automatic AI Serve when AI opponent or AI Doubles partner is the active server
@@ -2482,6 +2553,7 @@ class PickleballSimulationApp {
       } else if (ev.type === 'bounce') {
         this.sound.playCourtBounce(ev.pos, ev.impactSpeed, ev.inBounds);
         const evalRes = this.rules.evaluateBounce(ev);
+        this.updateScoreHUD();
 
         if (
           this.rules.mode === 'training' &&
@@ -2599,9 +2671,10 @@ class PickleballSimulationApp {
       showcaseFreeze: false,
     });
 
-    // 8. Update Floating Timing Callouts & Dynamic On-Screen Key Prompts
+    // 8. Update Floating Timing Callouts, On-Court Helper Pill & Dynamic On-Screen Key Prompts
     this.updateTimingCallouts(scaledDt);
     this.updateLiveKeyPrompt();
+    this.updateOnCourtHelper();
 
     if (this.cameraPreset === 'closeup' && human) {
       this.controls.target.lerp(new THREE.Vector3(human.pos.x - 0.06, 1.38, human.pos.z), 0.12);
@@ -2612,8 +2685,89 @@ class PickleballSimulationApp {
   }
 
   /**
+   * Projects the Floating 3D On-Court Beginner Action Coach Pill (#on-court-helper-pill)
+   * right beside the human player so they never have to look away from the ball!
+   */
+  updateOnCourtHelper() {
+    const pillEl = document.getElementById('on-court-helper-pill');
+    const iconEl = document.getElementById('on-court-helper-icon');
+    const textEl = document.getElementById('on-court-helper-text');
+    const human = this.players[0];
+    if (!pillEl || !iconEl || !textEl || !human || !human.active) return;
+
+    if (document.body.classList.contains('broadcast-clean-hud') || this.cameraPreset === 'closeup') {
+      pillEl.style.display = 'none';
+      return;
+    }
+
+    // Project a 3D anchor slightly to the right & below the human player's waist/feet
+    const sideOffset = human.pos.x > 1.2 ? -1.25 : 1.25;
+    const anchor = new THREE.Vector3(human.pos.x + sideOffset, 0.85, human.pos.z + 0.35);
+    anchor.project(this.camera);
+
+    if (anchor.z > 1) {
+      pillEl.style.display = 'none';
+      return;
+    }
+
+    const sx = THREE.MathUtils.clamp((anchor.x * 0.5 + 0.5) * window.innerWidth, 180, window.innerWidth - 180);
+    const sy = THREE.MathUtils.clamp((-anchor.y * 0.5 + 0.5) * window.innerHeight, 175, window.innerHeight - 190);
+
+    pillEl.style.display = 'inline-flex';
+    pillEl.style.transform = `translate(-50%, -50%) translate(${sx.toFixed(1)}px, ${sy.toFixed(1)}px)`;
+
+    const shotLabels = {
+      drive: '1: Normal Hit',
+      dink: '2/K: Soft Dink',
+      drop: '3/L: High Lob',
+      volley: '4/V: Volley',
+      smash: '5/M: Smash',
+      slice: '6/X: Spin Slice',
+    };
+    const activeShotText = shotLabels[this.selectedShotType] || '1: Normal Hit';
+    const spinText =
+      this.paddleBrushOffset > 2
+        ? `Topspin +${this.paddleBrushOffset}°`
+        : this.paddleBrushOffset < -2
+        ? `Backspin ${this.paddleBrushOffset}°`
+        : 'Flat Spin';
+
+    if (this.showcaseFreeze) {
+      pillEl.className = 'on-court-helper-pill';
+      iconEl.textContent = '🇮🇳';
+      textEl.innerHTML = '1-Tap <strong>Trackpad</strong> or press <strong>SPACE</strong> to Play!';
+    } else if (this.rules.rallyPhase === 'pre_serve') {
+      if (this.rules.servingTeam === 0) {
+        pillEl.className = 'on-court-helper-pill state-hit';
+        iconEl.textContent = '🎯';
+        textEl.innerHTML = 'YOUR SERVE: <strong>1-Tap Trackpad</strong> or <strong>SPACE</strong> (Move cursor to aim)';
+      } else {
+        pillEl.className = 'on-court-helper-pill state-wait';
+        iconEl.textContent = '👀';
+        textEl.innerHTML = 'AI SERVING: Wait for 1st Bounce → Then <strong>Tap</strong> or <strong>SPACE</strong>';
+      }
+    } else if (this.physics.inPlay) {
+      if (this.physics.vel.z > 0) {
+        if (this.rules.bouncesInRally < 2 && this.physics.bounceCountOnCurrentSide === 0) {
+          pillEl.className = 'on-court-helper-pill state-wait';
+          iconEl.textContent = '⏳';
+          textEl.innerHTML = `LET IT BOUNCE FIRST! • Ready: <strong>${activeShotText}</strong> (${spinText})`;
+        } else {
+          pillEl.className = 'on-court-helper-pill state-hit';
+          iconEl.textContent = '⚡';
+          textEl.innerHTML = `HIT NOW! <strong>1-Tap</strong> Normal • <strong>2-Finger/L</strong> Lob • <strong>${activeShotText}</strong>`;
+        }
+      } else {
+        pillEl.className = 'on-court-helper-pill';
+        iconEl.textContent = '🏃';
+        textEl.innerHTML = `Move w/ <strong>Trackpad</strong> or <strong>WASD</strong> • Scroll = Spin (${spinText})`;
+      }
+    }
+  }
+
+  /**
    * Updates the bottom on-screen prompt banner & highlights the recommended shot key (1-6)
-   * so the player always knows exactly what keys to hit right now!
+   * (and auto-selects it when Smart Shot Assist is ON!)
    */
   updateLiveKeyPrompt() {
     const badgeEl = document.getElementById('prompt-phase-badge');
@@ -2629,14 +2783,14 @@ class PickleballSimulationApp {
         recShot = 'drive';
         badgeEl.textContent = '🎯 YOUR SERVE';
         textEl.innerHTML =
-          'Aim with <strong>Mouse</strong> in the green diagonal box • Hold &amp; release <kbd class="inline-kbd pulse">SPACE</kbd> or <kbd class="inline-kbd">Left-Click</kbd> to hit Underhand Serve!';
-        if (strikeCapEl) strikeCapEl.textContent = 'HOLD & RELEASE TO SERVE';
+          'Move <strong>Trackpad Cursor</strong> in the green box • <strong>1-Tap / Left-Click</strong> or <kbd class="inline-kbd pulse">SPACE</kbd> to Serve!';
+        if (strikeCapEl) strikeCapEl.textContent = '1-TAP / SPACE = SERVE';
       } else {
         recShot = 'drive';
         badgeEl.textContent = '👀 AI SERVING';
         textEl.innerHTML =
-          'Get ready! Let the serve <strong>bounce once</strong> (Double-Bounce Rule), then press <kbd class="inline-kbd pulse">SPACE</kbd> or <kbd class="inline-kbd">Left-Click</kbd> to Return!';
-        if (strikeCapEl) strikeCapEl.textContent = 'PREPARE RETURN OF SERVE';
+          'Let the serve <strong>bounce once</strong>, then <strong>1-Tap / Left-Click</strong> or <kbd class="inline-kbd pulse">SPACE</kbd> to Return!';
+        if (strikeCapEl) strikeCapEl.textContent = 'TAP / SPACE AFTER BOUNCE';
       }
     } else if (this.physics.inPlay) {
       const ballComingToYou = this.physics.vel.z > 0;
@@ -2644,49 +2798,47 @@ class PickleballSimulationApp {
         if (this.rules.bouncesInRally < 2 && this.physics.bounceCountOnCurrentSide === 0) {
           recShot = this.rules.bouncesInRally === 1 ? 'drop' : 'drive';
           badgeEl.textContent = '⏳ WAIT FOR BOUNCE';
-          textEl.innerHTML = `<strong>Double-Bounce Rule:</strong> Let the ball bounce first! Press <kbd class="inline-kbd">${
-            recShot === 'drop' ? '3 (Drop)' : '1 (Drive)'
-          }</kbd> then hit <kbd class="inline-kbd pulse">SPACE</kbd> after bounce!`;
-          if (strikeCapEl) strikeCapEl.textContent = 'WAIT FOR BOUNCE → HIT SPACE';
+          textEl.innerHTML =
+            '<strong>Double-Bounce Rule:</strong> Let it bounce first! Then <strong>1-Tap / SPACE</strong> for Normal Hit, or <strong>2-Finger Tap / [L]</strong> for High Lob!';
+          if (strikeCapEl) strikeCapEl.textContent = 'WAIT FOR BOUNCE → TAP';
         } else if (this.physics.pos.y > 1.42) {
           recShot = 'smash';
-          badgeEl.textContent = '💥 HIGH BALL!';
+          badgeEl.textContent = '💥 HIGH BALL SMASH!';
           textEl.innerHTML =
-            'High ball overhead! Press <kbd class="inline-kbd">5</kbd> (Overhead Smash) + <kbd class="inline-kbd pulse">SPACE</kbd> or <kbd class="inline-kbd">Left-Click</kbd> to put it away!';
-          if (strikeCapEl) strikeCapEl.textContent = 'HIT SPACE FOR SMASH!';
+            'High ball! <strong>1-Tap / SPACE</strong> (or <kbd class="inline-kbd">M</kbd> / <kbd class="inline-kbd">5</kbd>) to slam a Power Smash!';
+          if (strikeCapEl) strikeCapEl.textContent = 'TAP / SPACE = SMASH!';
         } else if (
           this.physics.pos.z > 0 &&
           this.physics.pos.z <= COURT_SPECS.NVZ_DEPTH + 0.35 &&
           this.physics.bounceCountOnCurrentSide >= 1
         ) {
           recShot = 'dink';
-          badgeEl.textContent = '🍯 KITCHEN DINK';
+          badgeEl.textContent = '🍯 SOFT NET DINK';
           textEl.innerHTML =
-            'Ball bounced in the Kitchen! Press <kbd class="inline-kbd">2</kbd> (Kitchen Dink) + tap <kbd class="inline-kbd pulse">SPACE</kbd> softly!';
-          if (strikeCapEl) strikeCapEl.textContent = 'TAP SPACE FOR SOFT DINK';
+            'Inside the Kitchen! <strong>1-Tap / SPACE</strong> (or <kbd class="inline-kbd">K</kbd> / <kbd class="inline-kbd">2</kbd>) for a Soft Net Dink!';
+          if (strikeCapEl) strikeCapEl.textContent = 'TAP / SPACE = SOFT DINK';
         } else if (
           this.rules.bouncesInRally >= 2 &&
           this.physics.bounceCountOnCurrentSide === 0 &&
           human.pos.z <= COURT_SPECS.NVZ_DEPTH + 0.85
         ) {
           recShot = 'volley';
-          badgeEl.textContent = '⚡ NET VOLLEY';
+          badgeEl.textContent = '⚡ QUICK VOLLEY';
           textEl.innerHTML =
-            'Outside the Kitchen! Press <kbd class="inline-kbd">4</kbd> (Punch Volley) + <kbd class="inline-kbd pulse">SPACE</kbd> to volley out of the air!';
-          if (strikeCapEl) strikeCapEl.textContent = 'HIT SPACE TO VOLLEY!';
+            'At the Kitchen Line! <strong>1-Tap / SPACE</strong> (or <kbd class="inline-kbd">V</kbd> / <kbd class="inline-kbd">4</kbd>) to punch a Quick Volley!';
+          if (strikeCapEl) strikeCapEl.textContent = 'TAP / SPACE = VOLLEY!';
         } else {
           recShot = human.pos.z > 4.2 ? 'drop' : 'drive';
-          badgeEl.textContent = '⚡ BALL INCOMING';
-          textEl.innerHTML = `Use <kbd class="inline-kbd">WASD</kbd> to position • Press <kbd class="inline-kbd">${
-            recShot === 'drop' ? '3 (3rd-Shot Drop)' : '1 (Topspin Drive)'
-          }</kbd> + <kbd class="inline-kbd pulse">SPACE</kbd> or <kbd class="inline-kbd">Left-Click</kbd> to Strike!`;
-          if (strikeCapEl) strikeCapEl.textContent = 'HOLD & RELEASE SPACE TO HIT';
+          badgeEl.textContent = '⚡ HIT NOW!';
+          textEl.innerHTML =
+            '<strong>1-Tap / SPACE</strong> = Normal Hit • <strong>2-Finger Tap / <kbd class="inline-kbd">L</kbd></strong> = High Lob • <strong>2-Finger Scroll</strong> = Topspin/Backspin!';
+          if (strikeCapEl) strikeCapEl.textContent = '1-TAP = HIT • 2-TAP = LOB';
         }
       } else {
         recShot = 'dink';
-        badgeEl.textContent = '🏃 RECOVER TO LINE';
+        badgeEl.textContent = '🏃 SHOT IN FLIGHT';
         textEl.innerHTML =
-          'Shot in flight! Use <kbd class="inline-kbd">W</kbd><kbd class="inline-kbd">A</kbd><kbd class="inline-kbd">S</kbd><kbd class="inline-kbd">D</kbd> to hold the 7ft Kitchen Line &amp; prepare for the next ball!';
+          'Move <strong>Trackpad Cursor</strong> (or <kbd class="inline-kbd">WASD</kbd>) to glide • Use <strong>2-Finger Scroll Up/Down</strong> to dial in Topspin or Backspin!';
         if (strikeCapEl) strikeCapEl.textContent = 'OPPONENT RETURNING...';
       }
     }
@@ -2696,6 +2848,12 @@ class PickleballSimulationApp {
       document.querySelectorAll('[data-shot-btn]').forEach((btn) => {
         btn.classList.toggle('recommended', btn.getAttribute('data-shot-btn') === recShot);
       });
+    }
+
+    // When Smart Shot Assist is ON and user hasn't manually overridden during this shot, auto-select the best shot!
+    if (this.smartShotAssist && !this.manualShotOverride && this.selectedShotType !== recShot) {
+      this.selectedShotType = recShot;
+      this.syncShotButtonsUI();
     }
   }
 
@@ -2729,7 +2887,7 @@ class PickleballSimulationApp {
         if (this.keys['KeyS'] || this.keys['ArrowDown']) mz += 1;
 
         const manualInput = mx !== 0 || mz !== 0;
-        const speed = 5.9;
+        const speed = 6.2;
 
         if (manualInput) {
           const dir = new THREE.Vector3(mx, 0, mz).normalize();
@@ -2772,7 +2930,26 @@ class PickleballSimulationApp {
           const toTarget = desiredPos.sub(p.pos);
           const dist = toTarget.length();
           if (dist > 0.08) {
-            p.vel.copy(toTarget.normalize()).multiplyScalar(Math.min(speed, dist * 5.5));
+            p.vel.copy(toTarget.normalize()).multiplyScalar(Math.min(speed, dist * 5.8));
+            p.pos.addScaledVector(p.vel, dt);
+          } else {
+            p.vel.set(0, 0, 0);
+          }
+        } else if (
+          this.trackpadMoveAssist &&
+          this.rules.rallyPhase === 'open_rally'
+        ) {
+          // Laptop Trackpad Cursor Movement Assist: smoothly glides player horizontally with cursor
+          const targetX = THREE.MathUtils.clamp(this.trackpadCourtX, -2.9, 2.9);
+          const targetZ =
+            this.rules.bouncesInRally >= 2
+              ? Math.min(p.pos.z, COURT_SPECS.NVZ_DEPTH + 0.32)
+              : p.pos.z;
+          desiredPos.set(targetX, 0, targetZ);
+          const toTarget = desiredPos.sub(p.pos);
+          const dist = toTarget.length();
+          if (dist > 0.10) {
+            p.vel.copy(toTarget.normalize()).multiplyScalar(Math.min(speed * 0.85, dist * 4.5));
             p.pos.addScaledVector(p.vel, dt);
           } else {
             p.vel.set(0, 0, 0);
@@ -2909,10 +3086,14 @@ class PickleballSimulationApp {
   }
 
   /**
-   * Handles Human Player Swing Request (Spacebar, Left Mouse Click, or On-Screen Button)
+   * Handles Human Player Swing Request (Spacebar, Trackpad 1-Tap / Left-Click, 2-Finger Tap, or On-Screen Button)
+   * Includes a forgiving 480ms swing buffer so tapping slightly before the ball bounces or reaches the paddle still hits cleanly!
    */
   triggerHumanSwing() {
+    const wasFrozen = this.showcaseFreeze;
     this.exitShowcaseFreeze();
+    if (wasFrozen) return;
+
     const human = this.players[0];
     if (!human || !human.active) return;
 
@@ -2929,33 +3110,71 @@ class PickleballSimulationApp {
           brushOffset: this.paddleBrushOffset,
           sweetSpot: 0.98,
         });
+      } else if (this.autoServeCooldown > 0.08) {
+        // If AI is serving and user taps, trigger AI serve immediately so user never waits!
+        this.autoServeCooldown = 0.05;
       }
       return;
     }
 
     if (!this.physics.inPlay || this.physics.lastHitterTeam === 0) return;
 
+    // Queue a forgiving 480ms swing buffer and attempt immediate execution
+    this.pendingSwingTimer = 0.48;
+    this.tryExecuteBufferedHumanSwing();
+  }
+
+  tryExecuteBufferedHumanSwing() {
+    if (this.pendingSwingTimer <= 0) return;
+    if (!this.physics.inPlay || this.physics.lastHitterTeam === 0) {
+      this.pendingSwingTimer = 0;
+      return;
+    }
+
+    const human = this.players[0];
+    if (!human || !human.active || human.swingCooldown > 0) return;
+
+    // Wait until the ball is crossing or on our side of the net
+    if (this.physics.pos.z < -0.22) return;
+
+    // Beginner Double-Bounce Protection: if the ball MUST bounce first (Serve or Return of Serve)
+    // and hasn't bounced yet, hold the buffered swing until the instant it bounces!
+    if (this.rules.bouncesInRally < 2 && this.physics.bounceCountOnCurrentSide === 0) {
+      return;
+    }
+
+    // Kitchen NVZ Protection: if player is standing inside the Kitchen and ball hasn't bounced yet, wait for bounce!
+    if (
+      Math.abs(human.pos.z) <= COURT_SPECS.NVZ_DEPTH + 0.06 &&
+      this.physics.bounceCountOnCurrentSide === 0
+    ) {
+      return;
+    }
+
     const distToBall = Math.hypot(
       this.physics.pos.x - human.pos.x,
       this.physics.pos.z - human.pos.z
     );
-    if (this.physics.pos.z < -0.35 && distToBall > 2.2) return;
 
-    if (distToBall <= 2.45) {
-      human.pos.x = THREE.MathUtils.lerp(human.pos.x, this.physics.pos.x, 0.55);
-      if (
-        this.physics.bounceCountOnCurrentSide >= 1 ||
-        Math.abs(this.physics.pos.z) > COURT_SPECS.NVZ_DEPTH + 0.15
-      ) {
-        human.pos.z = THREE.MathUtils.lerp(
-          human.pos.z,
-          Math.max(0.6, this.physics.pos.z + 0.25),
-          0.45
-        );
-      }
+    // Generous 3.15m reach window for laptop trackpad play
+    if (distToBall > 3.15) return;
+
+    this.pendingSwingTimer = 0;
+
+    // Smoothly lunge human athlete toward the ball contact point
+    human.pos.x = THREE.MathUtils.lerp(human.pos.x, this.physics.pos.x, 0.65);
+    if (
+      this.physics.bounceCountOnCurrentSide >= 1 ||
+      Math.abs(this.physics.pos.z) > COURT_SPECS.NVZ_DEPTH + 0.15
+    ) {
+      human.pos.z = THREE.MathUtils.lerp(
+        human.pos.z,
+        Math.max(0.65, this.physics.pos.z + 0.25),
+        0.55
+      );
     }
 
-    const sweetSpot = THREE.MathUtils.clamp(1.05 - distToBall * 0.15, 0.72, 1.0);
+    const sweetSpot = THREE.MathUtils.clamp(1.06 - distToBall * 0.12, 0.76, 1.0);
     let chosenShot = this.selectedShotType;
     if (this.physics.pos.y > 1.48 && chosenShot === 'drive') {
       chosenShot = 'smash';
@@ -2977,6 +3196,7 @@ class PickleballSimulationApp {
       brushOffset: this.paddleBrushOffset,
       sweetSpot,
     });
+    this.manualShotOverride = false;
   }
 
   setCameraPreset(preset) {
@@ -3048,23 +3268,49 @@ class PickleballSimulationApp {
 
       if (e.code === 'Space' && !e.repeat) {
         e.preventDefault();
-        this.exitShowcaseFreeze();
+        if (this.showcaseFreeze) {
+          this.exitShowcaseFreeze();
+          return;
+        }
         this.sound.init();
         this.isChargingSwing = true;
         this.chargeStartTime = performance.now();
       }
+
+      // Direct 1-Key Shot Shortcuts: 1-6 OR intuitive letters (K = Dink, L = High Lob, V = Volley, M = Smash, X = Spin Slice)
       const shotMap = {
         Digit1: 'drive',
         Digit2: 'dink',
+        KeyK: 'dink',
         Digit3: 'drop',
+        KeyL: 'drop',
         Digit4: 'volley',
+        KeyV: 'volley',
         Digit5: 'smash',
+        KeyM: 'smash',
         Digit6: 'slice',
+        KeyX: 'slice',
       };
       if (shotMap[e.code]) {
+        this.exitShowcaseFreeze();
+        this.sound.init();
         this.selectedShotType = shotMap[e.code];
+        this.manualShotOverride = true;
         this.syncShotButtonsUI();
+
+        // Pressing [L] or [3] boosts loft for a true High Lob, and pressing [L] also triggers the swing!
+        if (e.code === 'KeyL' || e.code === 'Digit3') {
+          this.setPaddleSliderValue('pitch', 10);
+          if (this.players[0]) this.spawnTimingCallout(this.players[0], '🌈 HIGH LOB!', false);
+          if (e.code === 'KeyL') {
+            this.triggerHumanSwing();
+          }
+        } else if (e.code === 'KeyX' || e.code === 'Digit6') {
+          this.setPaddleSliderValue('brush', -14);
+          if (this.players[0]) this.spawnTimingCallout(this.players[0], '❄️ SPIN SLICE', false);
+        }
       }
+
       if (e.code === 'KeyQ') this.adjustPaddleAngle('pitch', -2);
       if (e.code === 'KeyE') this.adjustPaddleAngle('pitch', +2);
       if (e.code === 'KeyZ') this.adjustPaddleAngle('yaw', -3);
@@ -3082,7 +3328,7 @@ class PickleballSimulationApp {
       }
     });
 
-    // Mouse Aim on 3D Court & Left-Click Strike
+    // Laptop Trackpad Cursor Aim on 3D Court + Player Horizontal Glide Target
     this.canvas.addEventListener('pointermove', (e) => {
       const rect = this.canvas.getBoundingClientRect();
       this.mouseNDC.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
@@ -3090,18 +3336,32 @@ class PickleballSimulationApp {
       this.raycaster.setFromCamera(this.mouseNDC, this.camera);
       const hitPt = new THREE.Vector3();
       if (this.raycaster.ray.intersectPlane(this.groundPlane, hitPt)) {
-        this.aimTarget.x = THREE.MathUtils.clamp(hitPt.x, -3.5, 3.5);
-        this.aimTarget.z = THREE.MathUtils.clamp(hitPt.z, -7.2, -0.35);
+        if (this.rules.rallyPhase === 'pre_serve' && this.rules.servingTeam === 0) {
+          // Keep aim inside or near the legal diagonal service box on serve so beginners don't fault!
+          const box = this.rules.getTargetServiceBoxBounds();
+          this.aimTarget.x = THREE.MathUtils.clamp(hitPt.x, box.minX + 0.2, box.maxX - 0.2);
+          this.aimTarget.z = THREE.MathUtils.clamp(hitPt.z, box.minZ + 0.3, box.maxZ - 0.3);
+        } else {
+          this.aimTarget.x = THREE.MathUtils.clamp(hitPt.x, -2.85, 2.85);
+          this.aimTarget.z = THREE.MathUtils.clamp(hitPt.z, -6.45, -0.55);
+        }
+        this.trackpadCourtX = THREE.MathUtils.clamp(hitPt.x, -3.1, 3.1);
       }
     });
 
+    // Laptop Trackpad 1-Tap (Left-Click) = Normal Hit • 2-Finger Tap (Right-Click) = High Lob!
     this.canvas.addEventListener('pointerdown', (e) => {
       if (e.button === 0) {
-        this.exitShowcaseFreeze();
+        if (this.showcaseFreeze) {
+          this.exitShowcaseFreeze();
+          return;
+        }
         this.sound.init();
         this.isChargingSwing = true;
         this.chargeStartTime = performance.now();
         this.setKeycapVisual('Space', true);
+      } else if (e.button === 2) {
+        this.rightClickDownPos = { x: e.clientX, y: e.clientY, time: performance.now() };
       }
     });
 
@@ -3110,19 +3370,163 @@ class PickleballSimulationApp {
         this.isChargingSwing = false;
         this.setKeycapVisual('Space', false);
         this.triggerHumanSwing();
+      } else if (e.button === 2 && this.rightClickDownPos) {
+        const dx = Math.hypot(e.clientX - this.rightClickDownPos.x, e.clientY - this.rightClickDownPos.y);
+        const dtMs = performance.now() - this.rightClickDownPos.time;
+        this.rightClickDownPos = null;
+        // If user did a quick 2-Finger Tap / Right-Click (< 12px drag), execute a High Lob / Drop!
+        if (dx < 12 && dtMs < 550) {
+          if (this.showcaseFreeze) {
+            this.exitShowcaseFreeze();
+            return;
+          }
+          this.sound.init();
+          this.selectedShotType = 'drop';
+          this.manualShotOverride = true;
+          this.setPaddleSliderValue('pitch', 10);
+          this.syncShotButtonsUI();
+          if (this.players[0]) this.spawnTimingCallout(this.players[0], '🌈 HIGH LOB!', false);
+          this.triggerHumanSwing();
+        }
       }
     });
+
+    // Laptop Trackpad Two-Finger Scroll: Up/Down = Topspin/Backspin • Left/Right = Paddle Angle!
+    this.canvas.addEventListener(
+      'wheel',
+      (e) => {
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        e.preventDefault();
+        if (Math.abs(e.deltaY) >= Math.abs(e.deltaX)) {
+          const step = e.deltaY < 0 ? 2 : -2;
+          this.adjustPaddleAngle('brush', step);
+          if (this.players[0]) {
+            const label =
+              this.paddleBrushOffset > 0
+                ? `🌀 TOPSPIN +${this.paddleBrushOffset}°`
+                : this.paddleBrushOffset < 0
+                ? `❄️ BACKSPIN ${this.paddleBrushOffset}°`
+                : '🎯 FLAT SPIN 0°';
+            this.spawnTimingCallout(this.players[0], label, false);
+          }
+        } else {
+          const step = e.deltaX > 0 ? 2 : -2;
+          this.adjustPaddleAngle('yaw', step);
+        }
+      },
+      { passive: false }
+    );
 
     // On-screen SPACE / CLICK button
     const btnOnscreenSwing = document.getElementById('btn-onscreen-swing');
     if (btnOnscreenSwing) {
       btnOnscreenSwing.addEventListener('pointerdown', (e) => {
         e.stopPropagation();
-        this.exitShowcaseFreeze();
+        if (this.showcaseFreeze) {
+          this.exitShowcaseFreeze();
+          return;
+        }
         this.sound.init();
         this.isChargingSwing = true;
         this.chargeStartTime = performance.now();
         this.setKeycapVisual('Space', true);
+      });
+    }
+
+    // Clickable Quick Spin & Lob Buttons in the Bottom HUD for Laptop Trackpad Users
+    const btnQuickTopspin = document.getElementById('btn-quick-topspin');
+    if (btnQuickTopspin) {
+      btnQuickTopspin.addEventListener('click', () => {
+        this.setPaddleSliderValue('brush', 14);
+        this.setPaddleSliderValue('pitch', 2);
+        if (this.players[0]) this.spawnTimingCallout(this.players[0], '🌀 TOPSPIN +14°', false);
+      });
+    }
+    const btnQuickBackspin = document.getElementById('btn-quick-backspin');
+    if (btnQuickBackspin) {
+      btnQuickBackspin.addEventListener('click', () => {
+        this.selectedShotType = 'slice';
+        this.manualShotOverride = true;
+        this.syncShotButtonsUI();
+        this.setPaddleSliderValue('brush', -14);
+        this.setPaddleSliderValue('pitch', 6);
+        if (this.players[0]) this.spawnTimingCallout(this.players[0], '❄️ BACKSPIN -14°', false);
+      });
+    }
+    const btnQuickLob = document.getElementById('btn-quick-lob');
+    if (btnQuickLob) {
+      btnQuickLob.addEventListener('click', () => {
+        this.selectedShotType = 'drop';
+        this.manualShotOverride = true;
+        this.syncShotButtonsUI();
+        this.setPaddleSliderValue('pitch', 12);
+        this.setPaddleSliderValue('brush', 4);
+        if (this.players[0]) this.spawnTimingCallout(this.players[0], '🌈 HIGH LOB +12°', false);
+        this.triggerHumanSwing();
+      });
+    }
+    const btnQuickFlat = document.getElementById('btn-quick-flat');
+    if (btnQuickFlat) {
+      btnQuickFlat.addEventListener('click', () => {
+        this.selectedShotType = 'drive';
+        this.manualShotOverride = false;
+        this.syncShotButtonsUI();
+        this.setPaddleSliderValue('pitch', 0);
+        this.setPaddleSliderValue('yaw', 0);
+        this.setPaddleSliderValue('brush', 0);
+        if (this.players[0]) this.spawnTimingCallout(this.players[0], '🎯 NORMAL FLAT', false);
+      });
+    }
+
+    // Top-Bar Beginner Pace Toggle (Easy 75% / Normal 90% / Pro 100%)
+    const btnPace = document.getElementById('btn-toggle-pace');
+    if (btnPace) {
+      btnPace.addEventListener('click', () => {
+        const selDiff = document.getElementById('select-ai-difficulty');
+        if (this.paceMode === 'easy') {
+          this.paceMode = 'normal';
+          this.timeScale = 0.90;
+          this.ai.difficulty = 'pro';
+          if (selDiff) selDiff.value = 'pro';
+          btnPace.textContent = '⚡ Pace: Normal (90%)';
+        } else if (this.paceMode === 'normal') {
+          this.paceMode = 'pro';
+          this.timeScale = 1.0;
+          this.ai.difficulty = 'ppa';
+          if (selDiff) selDiff.value = 'ppa';
+          btnPace.textContent = '🔥 Pace: Fast Pro (100%)';
+        } else {
+          this.paceMode = 'easy';
+          this.timeScale = 0.75;
+          this.ai.difficulty = 'club';
+          if (selDiff) selDiff.value = 'club';
+          btnPace.textContent = '🐢 Pace: Easy (75%)';
+        }
+      });
+    }
+
+    // Top-Bar Smart Shot Assist Toggle
+    const btnAutoShot = document.getElementById('btn-toggle-autoshot');
+    if (btnAutoShot) {
+      btnAutoShot.addEventListener('click', () => {
+        this.smartShotAssist = !this.smartShotAssist;
+        this.manualShotOverride = false;
+        btnAutoShot.classList.toggle('active', this.smartShotAssist);
+        btnAutoShot.textContent = this.smartShotAssist
+          ? '🤖 Smart Shot: AUTO'
+          : '🎯 Shot Mode: MANUAL';
+      });
+    }
+
+    // Top-Bar Laptop Trackpad Player Movement Assist Toggle
+    const btnTrackpadMove = document.getElementById('btn-toggle-trackpad-move');
+    if (btnTrackpadMove) {
+      btnTrackpadMove.addEventListener('click', () => {
+        this.trackpadMoveAssist = !this.trackpadMoveAssist;
+        btnTrackpadMove.classList.toggle('active', this.trackpadMoveAssist);
+        btnTrackpadMove.textContent = this.trackpadMoveAssist
+          ? '🖱️ Trackpad Move: ON'
+          : '🖱️ Trackpad Move: OFF';
       });
     }
 
@@ -3146,7 +3550,16 @@ class PickleballSimulationApp {
     // Shot Type Selector Buttons
     document.querySelectorAll('[data-shot-btn]').forEach((btn) => {
       btn.addEventListener('click', () => {
-        this.selectedShotType = btn.getAttribute('data-shot-btn');
+        this.exitShowcaseFreeze();
+        this.sound.init();
+        const shot = btn.getAttribute('data-shot-btn');
+        this.selectedShotType = shot;
+        this.manualShotOverride = true;
+        if (shot === 'drop') {
+          this.setPaddleSliderValue('pitch', 10);
+        } else if (shot === 'slice') {
+          this.setPaddleSliderValue('brush', -14);
+        }
         this.syncShotButtonsUI();
       });
     });
@@ -3158,8 +3571,8 @@ class PickleballSimulationApp {
         const isClean = document.body.classList.toggle('broadcast-clean-hud');
         btnCleanHud.classList.toggle('active', isClean);
         btnCleanHud.textContent = isClean
-          ? '📺 Clean Broadcast HUD'
-          : '🎛️ Full Telemetry HUD';
+          ? '📺 Broadcast View'
+          : '🎛️ Full Controls HUD';
       });
     }
 
@@ -3173,7 +3586,7 @@ class PickleballSimulationApp {
           document.body.classList.remove('broadcast-clean-hud');
           if (btnCleanHud) {
             btnCleanHud.classList.remove('active');
-            btnCleanHud.textContent = '🎛️ Full Telemetry HUD';
+            btnCleanHud.textContent = '🎛️ Full Controls HUD';
           }
         }
         const isClosed = labDrawer.classList.toggle('drawer-collapsed');
@@ -3303,25 +3716,35 @@ class PickleballSimulationApp {
     }
   }
 
-  adjustPaddleAngle(type, delta) {
+  setPaddleSliderValue(type, val) {
     if (type === 'pitch') {
-      this.paddlePitchOffset = THREE.MathUtils.clamp(this.paddlePitchOffset + delta, -15, 20);
+      this.paddlePitchOffset = THREE.MathUtils.clamp(val, -15, 20);
       const s = document.getElementById('slider-pitch');
       const v = document.getElementById('val-pitch');
       if (s) s.value = this.paddlePitchOffset;
       if (v) v.textContent = `${this.paddlePitchOffset > 0 ? '+' : ''}${this.paddlePitchOffset}°`;
     } else if (type === 'yaw') {
-      this.paddleYawOffset = THREE.MathUtils.clamp(this.paddleYawOffset + delta, -25, 25);
+      this.paddleYawOffset = THREE.MathUtils.clamp(val, -25, 25);
       const s = document.getElementById('slider-yaw');
       const v = document.getElementById('val-yaw');
       if (s) s.value = this.paddleYawOffset;
       if (v) v.textContent = `${this.paddleYawOffset > 0 ? '+' : ''}${this.paddleYawOffset}°`;
     } else if (type === 'brush') {
-      this.paddleBrushOffset = THREE.MathUtils.clamp(this.paddleBrushOffset + delta, -25, 25);
+      this.paddleBrushOffset = THREE.MathUtils.clamp(val, -25, 25);
       const s = document.getElementById('slider-brush');
       const v = document.getElementById('val-brush');
       if (s) s.value = this.paddleBrushOffset;
       if (v) v.textContent = `${this.paddleBrushOffset > 0 ? '+' : ''}${this.paddleBrushOffset}°`;
+    }
+  }
+
+  adjustPaddleAngle(type, delta) {
+    if (type === 'pitch') {
+      this.setPaddleSliderValue('pitch', this.paddlePitchOffset + delta);
+    } else if (type === 'yaw') {
+      this.setPaddleSliderValue('yaw', this.paddleYawOffset + delta);
+    } else if (type === 'brush') {
+      this.setPaddleSliderValue('brush', this.paddleBrushOffset + delta);
     }
   }
 
@@ -3343,14 +3766,18 @@ class PickleballSimulationApp {
 
     const name0 = document.getElementById('team-name-0');
     const name1 = document.getElementById('team-name-1');
-    if (name0 && name1) {
-      if (this.rules.isDoublesActive()) {
-        name0.textContent = 'ARJUN / PRIYA (YOU)';
-        name1.textContent = 'VIKRAM / ANANYA (AI)';
-      } else {
-        name0.textContent = 'ARJUN (YOU)';
-        name1.textContent = 'VIKRAM (TOUR AI)';
-      }
+    const csName0 = document.getElementById('cs-name-0');
+    const csName1 = document.getElementById('cs-name-1');
+    if (this.rules.isDoublesActive()) {
+      if (name0) name0.textContent = 'ARJUN / PRIYA (YOU)';
+      if (name1) name1.textContent = 'VIKRAM / ANANYA (AI)';
+      if (csName0) csName0.textContent = '🇮🇳 YOU (ARJUN / PRIYA)';
+      if (csName1) csName1.textContent = 'VIKRAM / ANANYA (AI)';
+    } else {
+      if (name0) name0.textContent = 'ARJUN (YOU)';
+      if (name1) name1.textContent = 'VIKRAM (BPL AI)';
+      if (csName0) csName0.textContent = '🇮🇳 YOU (ARJUN)';
+      if (csName1) csName1.textContent = 'VIKRAM (BPL AI)';
     }
 
     if (this.rules.mode === 'training') {
@@ -3383,24 +3810,47 @@ class PickleballSimulationApp {
     const row0 = document.getElementById('team-row-0');
     const row1 = document.getElementById('team-row-1');
 
-    if (scoreCallEl) scoreCallEl.textContent = this.rules.getFormattedScore();
+    // Center-Top Prominent Scoreboard Pill Elements
+    const csScore0 = document.getElementById('cs-score-0');
+    const csScore1 = document.getElementById('cs-score-1');
+    const csScoreCall = document.getElementById('cs-score-call');
+    const csServeStatus = document.getElementById('cs-serve-status');
+    const csTeam0 = document.getElementById('cs-team-0');
+    const csTeam1 = document.getElementById('cs-team-1');
+
+    const formattedScore = this.rules.getFormattedScore();
+    if (scoreCallEl) scoreCallEl.textContent = formattedScore;
     if (scoreNearEl) scoreNearEl.textContent = this.rules.score[0];
     if (scoreFarEl) scoreFarEl.textContent = this.rules.score[1];
 
+    if (csScore0) csScore0.textContent = this.rules.score[0];
+    if (csScore1) csScore1.textContent = this.rules.score[1];
+    if (csScoreCall) csScoreCall.textContent = `CALL: ${formattedScore}`;
+
     if (row0) row0.classList.toggle('active-srv', this.rules.servingTeam === 0);
     if (row1) row1.classList.toggle('active-srv', this.rules.servingTeam === 1);
+    if (csTeam0) csTeam0.classList.toggle('serving', this.rules.servingTeam === 0);
+    if (csTeam1) csTeam1.classList.toggle('serving', this.rules.servingTeam === 1);
+
+    const boxLabel =
+      this.rules.getServeSideBox() === 'right_even' ? 'Right (Even)' : 'Left (Odd)';
 
     if (serverBadgeEl) {
-      const boxLabel =
-        this.rules.getServeSideBox() === 'right_even' ? 'Right (Even)' : 'Left (Odd)';
       serverBadgeEl.textContent = this.rules.isDoublesActive()
         ? `Server #${this.rules.serverNumber} • ${boxLabel}`
         : `Serving ${boxLabel}`;
     }
 
+    if (csServeStatus) {
+      const srvTeamLabel = this.rules.servingTeam === 0 ? 'YOUR SERVE' : 'AI SERVE';
+      csServeStatus.textContent = this.rules.isDoublesActive()
+        ? `${srvTeamLabel} #${this.rules.serverNumber} (${boxLabel.split(' ')[0].toUpperCase()})`
+        : `${srvTeamLabel} (${boxLabel.split(' ')[0].toUpperCase()})`;
+    }
+
     if (bounceStatusEl) {
       if (this.rules.rallyPhase === 'pre_serve') {
-        bounceStatusEl.textContent = 'Awaiting Legal Underhand Serve';
+        bounceStatusEl.textContent = 'Awaiting Legal Underhand Serve (Tap Trackpad or SPACE)';
         bounceStatusEl.className = 'rule-status-strip neutral';
       } else if (this.rules.bouncesInRally === 0) {
         bounceStatusEl.textContent = 'Bounce 0/2: Serve MUST bounce before return!';
@@ -3437,6 +3887,16 @@ class PickleballSimulationApp {
     titleEl.textContent = title;
     detailEl.textContent = detail;
     banner.className = `callout-banner ${type}`;
+
+    if (this._bannerTimer) clearTimeout(this._bannerTimer);
+    if (type === 'info') {
+      // Info tips are already shown on the Floating On-Court Helper Pill & Bottom Prompt Bar
+      banner.classList.add('banner-hidden');
+    } else {
+      this._bannerTimer = setTimeout(() => {
+        banner.classList.add('banner-hidden');
+      }, 2800);
+    }
   }
 
   updatePlayerLabels() {
