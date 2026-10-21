@@ -827,21 +827,21 @@ body.broadcast-clean-hud .player-floating-label:not(.has-emotion) {
    ============================================================================ */
 .hud-left {
   position: fixed;
-  top: 162px;
-  left: 14px;
-  width: 285px;
+  top: 264px;
+  left: 12px;
+  width: 348px;
   z-index: 18;
   pointer-events: none;
 }
 
 .coach-card {
   pointer-events: auto;
-  padding: 11px 13px;
+  padding: 12px 14px;
   border-radius: 14px;
-  background: var(--bg-glass);
-  border: 1px solid var(--border-glass);
-  backdrop-filter: blur(14px);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  background: rgba(9, 18, 36, 0.93);
+  border: 1.5px solid rgba(56, 189, 248, 0.38);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
   transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
@@ -855,23 +855,45 @@ body.broadcast-clean-hud .player-floating-label:not(.has-emotion) {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 7px;
+  margin-bottom: 6px;
 }
 
 .badge-tag {
-  font-size: 0.62rem;
-  font-weight: 800;
+  font-size: 0.64rem;
+  font-weight: 900;
   letter-spacing: 0.05em;
   color: var(--accent-gold);
 }
 
 .progress-pill {
-  font-size: 0.64rem;
+  font-size: 0.65rem;
   font-weight: 800;
-  padding: 2px 8px;
+  padding: 2px 9px;
   border-radius: 999px;
-  background: rgba(16, 185, 129, 0.22);
+  background: rgba(16, 185, 129, 0.24);
+  border: 1px solid rgba(52, 211, 153, 0.45);
   color: #6ee7b7;
+}
+
+.progress-pill.completed {
+  background: linear-gradient(90deg, #059669, #10b981);
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.55);
+}
+
+.coach-progress-track {
+  width: 100%;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.coach-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #38bdf8, #10b981, #facc15);
+  transition: width 0.28s ease;
 }
 
 .lesson-steps {
@@ -882,33 +904,39 @@ body.broadcast-clean-hud .player-floating-label:not(.has-emotion) {
 }
 
 .step-btn {
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.06);
   color: #cbd5e1;
-  padding: 4px 2px;
+  padding: 5px 2px;
   border-radius: 6px;
-  font-size: 0.6rem;
-  font-weight: 700;
+  font-size: 0.61rem;
+  font-weight: 800;
   cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.step-btn:hover {
+  border-color: var(--accent-sky);
+  color: #ffffff;
 }
 
 .step-btn.active {
   background: var(--accent-sky);
-  color: #0f172a;
+  color: #091326;
   border-color: var(--accent-sky);
-  font-weight: 800;
+  font-weight: 900;
 }
 
 .lesson-title {
-  font-size: 0.84rem;
-  font-weight: 800;
+  font-size: 0.88rem;
+  font-weight: 900;
   color: #ffffff;
   margin-bottom: 2px;
 }
 
 .lesson-subtitle {
   font-size: 0.68rem;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--accent-sky);
   margin-bottom: 5px;
 }
@@ -916,18 +944,111 @@ body.broadcast-clean-hud .player-floating-label:not(.has-emotion) {
 .lesson-text {
   font-size: 0.7rem;
   line-height: 1.38;
-  color: #cbd5e1;
+  color: #e2e8f0;
   margin-bottom: 7px;
 }
 
+.coach-checklist-box {
+  padding: 7px 9px;
+  border-radius: 9px;
+  background: rgba(15, 29, 56, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  margin-bottom: 7px;
+}
+
+.coach-checklist-header {
+  font-size: 0.6rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  color: #fde047;
+  margin-bottom: 4px;
+}
+
+.coach-checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.coach-checklist li {
+  font-size: 0.68rem;
+  line-height: 1.34;
+  color: #cbd5e1;
+  font-weight: 600;
+  padding: 3px 6px;
+  border-radius: 6px;
+  border-left: 2.5px solid transparent;
+  transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+}
+
+.coach-checklist li.active-step {
+  background: rgba(56, 189, 248, 0.18);
+  border-left-color: #facc15;
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.coach-checklist li.done-step {
+  color: #6ee7b7;
+  border-left-color: #10b981;
+}
+
 .coach-tip-box {
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: rgba(250, 204, 21, 0.13);
+  border-left: 3px solid var(--accent-gold);
+  font-size: 0.67rem;
+  line-height: 1.32;
+  color: #fef08a;
+  margin-bottom: 8px;
+}
+
+.coach-actions-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.coach-action-btn {
   padding: 6px 8px;
   border-radius: 8px;
-  background: rgba(250, 204, 21, 0.14);
-  border-left: 3px solid var(--accent-gold);
   font-size: 0.68rem;
-  line-height: 1.35;
-  color: #fef08a;
+  font-weight: 800;
+  cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.16s ease;
+}
+
+.coach-action-btn.feed-btn {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: rgba(56, 189, 248, 0.48);
+  color: #e0f2fe;
+}
+
+.coach-action-btn.feed-btn:hover {
+  background: rgba(56, 189, 248, 0.32);
+  color: #ffffff;
+}
+
+.coach-action-btn.next-btn {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+}
+
+.coach-action-btn.next-btn.ready-pulse {
+  background: linear-gradient(135deg, #059669, #10b981);
+  border-color: #34d399;
+  color: #ffffff;
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.55);
+}
+
+.coach-action-btn.next-btn:hover {
+  background: rgba(16, 185, 129, 0.35);
+  border-color: #34d399;
 }
 
 /* ============================================================================

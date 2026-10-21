@@ -41,8 +41,14 @@ export class PickleballAI {
     if (rules.mode === 'training' && rules.trainingIndex === 0) {
       players.forEach((p) => {
         p.active = p.id === 'p0' || p.id === 'p2';
-        if (p.id === 'p0') p.homePos.set(0.85, 0, COURT_SPECS.NVZ_DEPTH + 0.22);
-        if (p.id === 'p2') p.homePos.set(-0.85, 0, -(COURT_SPECS.NVZ_DEPTH + 0.22));
+        if (p.id === 'p0') {
+          p.homePos.set(0.85, 0, COURT_SPECS.NVZ_DEPTH + 0.22);
+          p.roleLabel = 'YOU • KITCHEN LINE';
+        }
+        if (p.id === 'p2') {
+          p.homePos.set(-0.85, 0, -(COURT_SPECS.NVZ_DEPTH + 0.22));
+          p.roleLabel = 'COACH VIKRAM';
+        }
       });
       return;
     }
@@ -54,7 +60,11 @@ export class PickleballAI {
         const boxX = getBoxX(p.team, serveBox);
         const zBase = p.team === 0 ? COURT_SPECS.HALF_LENGTH + 0.28 : -(COURT_SPECS.HALF_LENGTH + 0.28);
         p.homePos.set(boxX, 0, zBase);
-        p.roleLabel = p.team === srvTeam ? 'SERVER' : 'RECEIVER';
+        if (rules.mode === 'training') {
+          p.roleLabel = p.isHuman ? 'YOU • STUDENT' : 'COACH VIKRAM';
+        } else {
+          p.roleLabel = p.team === srvTeam ? 'SERVER' : 'RECEIVER';
+        }
       });
       return;
     }

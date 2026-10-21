@@ -2,6 +2,10 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 
 import {
   COURT_SPECS,
@@ -27,6 +31,7 @@ class PickleballSimulationApp {
     this.time = 0;
     this.timeScale = 0.75; // Default Easy 75% game speed for newcomers
     this.paceMode = 'easy'; // 'easy' (0.75) | 'normal' (0.90) | 'pro' (1.0)
+    this.ultraHdEnabled = true; // Ultra-HD 4K PBR + 4x MSAA + Broadcast Bloom active by default
 
     // Input, Laptop Trackpad & Explicit Paddle Contact Controls
     this.keys = {};
@@ -70,6 +75,9 @@ class PickleballSimulationApp {
     this.ballMesh = null;
     this.autoServeCooldown = 0;
     this.focusedEmotionPlayer = null;
+    this.composer = null;
+    this.bloomPass = null;
+    this.pipPortraitLight = null;
 
     this.initScene();
     this.initModalFallback();
@@ -77,10 +85,19 @@ class PickleballSimulationApp {
     this.loadAllAssets();
   }
 
+  getTargetPixelRatio() {
+    const nativeDpr = window.devicePixelRatio || 1;
+    if (this.ultraHdEnabled) {
+      // Super-sample at least 1.75x even on 1x displays, up to 2.5x on Retina/4K displays
+      return Math.min(Math.max(nativeDpr, 1.75), 2.5);
+    }
+    return Math.min(nativeDpr, 1.25);
+  }
+
   initScene() {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x060d24);
-    this.scene.fog = new THREE.FogExp2(0x060d24, 0.0068);
+    this.scene.background = new THREE.Color(0x050c22);
+    this.scene.fog = new THREE.FogExp2(0x050c22, 0.0052);
 
     this.camera = new THREE.PerspectiveCamera(
       42,
@@ -99,14 +116,17 @@ class PickleballSimulationApp {
       powerPreference: 'high-performance',
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.renderer.setPixelRatio(this.getTargetPixelRatio());
     this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.08;
+    this.renderer.toneMappingExposure = 1.06;
     this.renderer.autoClear = false;
 
-    // Generate BPL 2025 Championship Indoor Arena PMREM Environment Map
+    // Initialize Ultra-HD 4x MSAA + Broadcast UnrealBloom Post-Processing Composer
+    this.initPostProcessing();
+
+    // Generate BPL 2025 Championship Indoor Arena HDR-style PMREM Environment Map
     this.buildOutdoorEnvironmentMap();
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -124,34 +144,41 @@ class PickleballSimulationApp {
       RIGHT: THREE.MOUSE.ROTATE,
     };
 
-    // BPL 2025 Championship Indoor/Night Arena Spotlight Illumination
-    const hemiLight = new THREE.HemisphereLight(0xdbeafe, 0x0b183d, 1.08);
+    // BPL 2025 Championship Indoor/Night Arena Ultra-HD Broadcast Lighting Rig
+    const hemiLight = new THREE.HemisphereLight(0xe0f2fe, 0x0d1f4d, 1.12);
     this.scene.add(hemiLight);
 
-    const sunLight = new THREE.DirectionalLight(0xf8fafc, 2.35);
+    const sunLight = new THREE.DirectionalLight(0xffffff, 2.25);
     sunLight.position.set(4.5, 21.0, 9.5);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.set(4096, 4096);
-    sunLight.shadow.camera.near = 1;
-    sunLight.shadow.camera.far = 55;
-    const d = 13.5;
+    sunLight.shadow.camera.near = 2;
+    sunLight.shadow.camera.far = 48;
+    const d = 11.8;
     sunLight.shadow.camera.left = -d;
     sunLight.shadow.camera.right = d;
     sunLight.shadow.camera.top = d;
     sunLight.shadow.camera.bottom = -d;
-    sunLight.shadow.bias = -0.00025;
+    sunLight.shadow.bias = -0.0002;
+    sunLight.shadow.normalBias = 0.012;
     this.scene.add(sunLight);
 
-    // Subtle cool broadcast rim light + warm court bounce fill light on athletes
-    const rimLight = new THREE.DirectionalLight(0x93c5fd, 0.72);
-    rimLight.position.set(-12.0, 10.0, -12.0);
-    const faceFillNear = new THREE.DirectionalLight(0xfff5ea, 1.15);
-    faceFillNear.position.set(2.0, 5.0, -11.0);
-    const faceFillFar = new THREE.DirectionalLight(0xfff5ea, 0.95);
-    faceFillFar.position.set(-2.0, 5.0, 11.0);
-    this.scene.add(rimLight, faceFillNear, faceFillFar);
+    // Dual broadcast rim lights + court bounce key lights for 3D athlete definition
+    const rimLight = new THREE.DirectionalLight(0x93c5fd, 0.88);
+    rimLight.position.set(-12.0, 10.5, -12.0);
+    const rimLightRight = new THREE.DirectionalLight(0xbae6fd, 0.64);
+    rimLightRight.position.set(12.0, 9.5, -10.0);
+    const faceFillNear = new THREE.DirectionalLight(0xfff7ed, 1.24);
+    faceFillNear.position.set(2.0, 5.2, -11.0);
+    const faceFillFar = new THREE.DirectionalLight(0xfff7ed, 1.06);
+    faceFillFar.position.set(-2.0, 5.2, 11.0);
+    this.scene.add(rimLight, rimLightRight, faceFillNear, faceFillFar);
 
-    // Build Bharat Pickleball League (BPL 2025) Championship Arena, Back Wall Murals, LED Barriers, Planters, VIP Lounge & Camera Tripod
+    // Dedicated soft studio portrait key light for the Top-Right Live Athlete Face Cam (PiP)
+    this.pipPortraitLight = new THREE.PointLight(0xfff8f0, 0, 3.2, 1.4);
+    this.scene.add(this.pipPortraitLight);
+
+    // Build Bharat Pickleball League (BPL 2025) Championship Arena, Floodlight Trusses, Murals, LED Barriers, VIP Lounge & Camera Tripod
     this.buildRealisticOutdoorStadium();
 
     // 3D Court Overlays (Kitchen, Service Box, Trajectory, Bounce Rings) — enabled by default for beginners!
@@ -159,15 +186,74 @@ class PickleballSimulationApp {
     this.overlays.showGuides = true;
 
     window.addEventListener('resize', () => {
-      this.camera.aspect = window.innerWidth / window.innerHeight;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      this.camera.aspect = w / h;
       this.camera.updateProjectionMatrix();
-      this.renderer.setSize(window.innerWidth, window.innerHeight);
+      const dpr = this.getTargetPixelRatio();
+      this.renderer.setPixelRatio(dpr);
+      this.renderer.setSize(w, h);
+      if (this.composer) {
+        this.composer.setPixelRatio(dpr);
+        this.composer.setSize(w, h);
+      }
+      if (this.bloomPass) {
+        this.bloomPass.resolution.set(w * dpr, h * dpr);
+      }
     });
+  }
+
+  initPostProcessing() {
+    try {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const dpr = this.getTargetPixelRatio();
+      const rt = new THREE.WebGLRenderTarget(Math.floor(w * dpr), Math.floor(h * dpr), {
+        type: THREE.HalfFloatType,
+        samples: 4, // 4x Hardware Multi-Sample Anti-Aliasing (MSAA) for razor-sharp court lines & net cords
+      });
+      this.composer = new EffectComposer(this.renderer, rt);
+      this.composer.setPixelRatio(dpr);
+      this.composer.setSize(w, h);
+
+      const renderPass = new RenderPass(this.scene, this.camera);
+      this.composer.addPass(renderPass);
+
+      this.bloomPass = new UnrealBloomPass(
+        new THREE.Vector2(w * dpr, h * dpr),
+        0.08, // Crisp HDR floodlight & optic ball highlight without washing out court lines
+        0.28,
+        1.24
+      );
+      this.composer.addPass(this.bloomPass);
+
+      const outputPass = new OutputPass();
+      this.composer.addPass(outputPass);
+    } catch (_) {
+      this.composer = null;
+    }
+  }
+
+  applyGraphicsQuality(ultraHd) {
+    this.ultraHdEnabled = ultraHd;
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const dpr = this.getTargetPixelRatio();
+    this.renderer.setPixelRatio(dpr);
+    this.renderer.setSize(w, h);
+    if (this.composer) {
+      this.composer.setPixelRatio(dpr);
+      this.composer.setSize(w, h);
+    }
+    if (this.bloomPass) {
+      this.bloomPass.enabled = ultraHd;
+      this.bloomPass.resolution.set(w * dpr, h * dpr);
+    }
   }
 
   /**
    * Generates a procedural HDR-style BPL 2025 Championship Indoor Arena PMREM environment map
-   * so carbon-fiber paddles, stadium steel, and royal-blue acrylic court surfaces have crisp specular sheen.
+   * with crisp overhead LED stadium lightbanks so clearcoated courts, carbon paddles & steel shine in Ultra-HD.
    */
   buildOutdoorEnvironmentMap() {
     try {
@@ -175,7 +261,7 @@ class PickleballSimulationApp {
       pmrem.compileEquirectangularShader();
       const envScene = new THREE.Scene();
       const skyDome = new THREE.Mesh(
-        new THREE.SphereGeometry(50, 32, 16),
+        new THREE.SphereGeometry(50, 48, 24),
         new THREE.ShaderMaterial({
           side: THREE.BackSide,
           vertexShader: `
@@ -189,25 +275,29 @@ class PickleballSimulationApp {
             varying vec3 vPos;
             void main() {
               vec3 d = normalize(vPos);
-              vec3 ground = vec3(0.08, 0.20, 0.56);
-              vec3 horizon = vec3(0.07, 0.14, 0.36);
-              vec3 zenith = vec3(0.02, 0.05, 0.14);
+              vec3 ground = vec3(0.09, 0.22, 0.62);
+              vec3 horizon = vec3(0.07, 0.16, 0.42);
+              vec3 zenith = vec3(0.02, 0.05, 0.15);
               vec3 col = d.y < 0.0
                 ? mix(horizon, ground, clamp(-d.y * 2.5, 0.0, 1.0))
                 : mix(horizon, zenith, pow(d.y, 0.65));
-              vec3 spot1 = normalize(vec3(0.25, 0.88, 0.35));
-              vec3 spot2 = normalize(vec3(-0.35, 0.85, -0.35));
-              col += vec3(0.85, 0.92, 1.0) * pow(max(dot(d, spot1), 0.0), 32.0) * 1.8;
-              col += vec3(0.75, 0.88, 1.0) * pow(max(dot(d, spot2), 0.0), 32.0) * 1.4;
+              vec3 spot1 = normalize(vec3(0.32, 0.86, 0.35));
+              vec3 spot2 = normalize(vec3(-0.32, 0.86, -0.35));
+              vec3 spot3 = normalize(vec3(0.32, 0.86, -0.35));
+              vec3 spot4 = normalize(vec3(-0.32, 0.86, 0.35));
+              col += vec3(0.92, 0.96, 1.0) * pow(max(dot(d, spot1), 0.0), 42.0) * 2.2;
+              col += vec3(0.85, 0.92, 1.0) * pow(max(dot(d, spot2), 0.0), 42.0) * 1.9;
+              col += vec3(0.88, 0.94, 1.0) * pow(max(dot(d, spot3), 0.0), 42.0) * 1.8;
+              col += vec3(0.88, 0.94, 1.0) * pow(max(dot(d, spot4), 0.0), 42.0) * 1.8;
               gl_FragColor = vec4(col, 1.0);
             }
           `,
         })
       );
       envScene.add(skyDome);
-      const envRT = pmrem.fromScene(envScene, 0.03);
+      const envRT = pmrem.fromScene(envScene, 0.025);
       this.scene.environment = envRT.texture;
-      this.scene.environmentIntensity = 0.58;
+      this.scene.environmentIntensity = 0.74;
       pmrem.dispose();
     } catch (_) {
       // Fallback if PMREM fails
@@ -829,22 +919,62 @@ class PickleballSimulationApp {
     camRig.add(camHead);
     envGroup.add(camRig);
 
+    // 9. Overhead BPL Broadcast LED Floodlight Trusses & Subtle Atmospheric Spotlight Beams
+    const trussMat = new THREE.MeshStandardMaterial({
+      color: 0x0b1120,
+      roughness: 0.32,
+      metalness: 0.85,
+    });
+    const ledFixtureMat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(1.75, 1.88, 2.1),
+    });
+    const beamConeGeo = new THREE.ConeGeometry(4.2, 11.2, 24, 1, true);
+    const beamConeMat = new THREE.MeshBasicMaterial({
+      color: 0xbae6fd,
+      transparent: true,
+      opacity: 0.011,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    });
+
+    for (const [lx, lz] of [
+      [-6.8, -5.2],
+      [6.8, -5.2],
+      [-6.8, 5.2],
+      [6.8, 5.2],
+    ]) {
+      const bank = new THREE.Group();
+      bank.position.set(lx, 11.2, lz);
+      bank.lookAt(0, 0, lz * 0.25);
+
+      const housing = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.28, 0.55), trussMat);
+      const emitter = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 0.42), ledFixtureMat);
+      emitter.position.z = 0.28;
+      bank.add(housing, emitter);
+      envGroup.add(bank);
+
+      const cone = new THREE.Mesh(beamConeGeo, beamConeMat);
+      cone.position.set(lx * 0.52, 5.6, lz * 0.65);
+      cone.rotation.z = lx > 0 ? 0.36 : -0.36;
+      envGroup.add(cone);
+    }
+
     this.scene.add(envGroup);
   }
 
   /**
-   * Upgrades the loaded court.glb materials and builds the PPA Pickleball Tour 2025
-   * 3072x4096 Royal-Blue / Sky-Blue Championship Court Surface, On-Court Brand Stencils
-   * (`SELKIRK™`, `PPA PICKLEBALL TOUR`, `erne`, `PICKLEBALL.COM`, `VERSIX`, `THORLO`),
-   * and Portable Pro Net with `FILA` Vertical Side Banners & Bottom Stabilizer Bar.
+   * Upgrades the loaded court.glb materials and builds the BPL 2025 Ultra-HD
+   * 4096x6144 Royal-Blue / Sky-Blue Championship Court Surface with Tangent-Space Silica Normal Map,
+   * Physical Acrylic Clearcoat Sheen, and Portable Pro Net with Braided Cord Mesh.
    */
   upgradeCourtMaterials(courtRoot) {
     const maxAniso = Math.min(16, this.renderer.capabilities.getMaxAnisotropy());
 
-    // 1. High-Resolution 3072x4096 PPA Tour 2025 Master Court Surface Texture
+    // 1. Ultra-HD 4096x6144 BPL 2025 Master Court Surface Texture (~350 DPI court precision)
     // World coverage: X in [-5.85, +5.85] (11.70m), Z in [-9.50, +9.50] (19.00m)
-    const W = 3072;
-    const H = 4096;
+    const W = 4096;
+    const H = 6144;
     const worldW = 11.70;
     const worldL = 19.00;
     const courtCanvas = document.createElement('canvas');
@@ -1018,38 +1148,44 @@ class PickleballSimulationApp {
     ctx.fillRect(xCenter - lineW * 0.5, zNorth, lineW, zNvzNorth - zNorth);
     ctx.fillRect(xCenter - lineW * 0.5, zNvzSouth, lineW, zSouth - zNvzSouth);
 
-    // Realistic Silica-Sand Micro-Grit Bump Map
-    const bumpCanvas = document.createElement('canvas');
-    bumpCanvas.width = 512;
-    bumpCanvas.height = 512;
-    const bCtx = bumpCanvas.getContext('2d');
-    const imgData = bCtx.createImageData(512, 512);
+    // Ultra-HD Tangent-Space Silica-Sand Micro-Grit Normal Map (512x512)
+    const normalCanvas = document.createElement('canvas');
+    normalCanvas.width = 512;
+    normalCanvas.height = 512;
+    const nMapCtx = normalCanvas.getContext('2d');
+    const imgData = nMapCtx.createImageData(512, 512);
     let seed = 1337;
     for (let i = 0; i < imgData.data.length; i += 4) {
       seed = (seed * 1664525 + 1013904223) >>> 0;
-      const g = 118 + (seed & 0x1b);
-      imgData.data[i] = g;
-      imgData.data[i + 1] = g;
-      imgData.data[i + 2] = g;
+      const nx = 128 + (((seed & 0xff) - 128) >> 2);
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      const ny = 128 + (((seed & 0xff) - 128) >> 2);
+      imgData.data[i] = nx;
+      imgData.data[i + 1] = ny;
+      imgData.data[i + 2] = 248;
       imgData.data[i + 3] = 255;
     }
-    bCtx.putImageData(imgData, 0, 0);
+    nMapCtx.putImageData(imgData, 0, 0);
 
     const courtTex = new THREE.CanvasTexture(courtCanvas);
     courtTex.colorSpace = THREE.SRGBColorSpace;
     courtTex.anisotropy = maxAniso;
 
-    const bumpTex = new THREE.CanvasTexture(bumpCanvas);
-    bumpTex.wrapS = THREE.RepeatWrapping;
-    bumpTex.wrapT = THREE.RepeatWrapping;
-    bumpTex.repeat.set(24, 48);
+    const courtNormalTex = new THREE.CanvasTexture(normalCanvas);
+    courtNormalTex.wrapS = THREE.RepeatWrapping;
+    courtNormalTex.wrapT = THREE.RepeatWrapping;
+    courtNormalTex.repeat.set(32, 60);
+    courtNormalTex.anisotropy = maxAniso;
 
-    const masterCourtMat = new THREE.MeshStandardMaterial({
+    const masterCourtMat = new THREE.MeshPhysicalMaterial({
       map: courtTex,
-      bumpMap: bumpTex,
-      bumpScale: 0.002,
-      roughness: 0.56,
-      metalness: 0.05,
+      normalMap: courtNormalTex,
+      normalScale: new THREE.Vector2(0.22, 0.22),
+      roughness: 0.48,
+      metalness: 0.04,
+      clearcoat: 0.26,
+      clearcoatRoughness: 0.36,
+      envMapIntensity: 0.65,
     });
 
     // Add dedicated precision 11.70m x 19.00m court surface plane at y = 0.004m
@@ -1075,17 +1211,21 @@ class PickleballSimulationApp {
     netShadowPlane.position.set(0, 0.0055, 0.14);
     courtRoot.add(netShadowPlane);
 
-    // 2. Woven Black Cord Net Mesh Texture
+    // 2. Ultra-HD 512x512 Braided Black Cord Net Mesh Texture
     const netCanvas = document.createElement('canvas');
-    netCanvas.width = 128;
-    netCanvas.height = 128;
+    netCanvas.width = 512;
+    netCanvas.height = 512;
     const nCtx = netCanvas.getContext('2d');
-    nCtx.clearRect(0, 0, 128, 128);
-    nCtx.fillStyle = 'rgba(10, 15, 28, 0.16)';
-    nCtx.fillRect(0, 0, 128, 128);
-    nCtx.strokeStyle = 'rgba(10, 15, 28, 0.94)';
-    nCtx.lineWidth = 20;
-    nCtx.strokeRect(0, 0, 128, 128);
+    nCtx.clearRect(0, 0, 512, 512);
+    nCtx.fillStyle = 'rgba(10, 15, 28, 0.14)';
+    nCtx.fillRect(0, 0, 512, 512);
+    nCtx.strokeStyle = 'rgba(12, 18, 34, 0.96)';
+    nCtx.lineWidth = 68;
+    nCtx.strokeRect(0, 0, 512, 512);
+    // Subtle braided cord highlight along top/left edges of each square cell
+    nCtx.strokeStyle = 'rgba(148, 163, 184, 0.22)';
+    nCtx.lineWidth = 10;
+    nCtx.strokeRect(16, 16, 480, 480);
     const netTex = new THREE.CanvasTexture(netCanvas);
     netTex.wrapS = THREE.RepeatWrapping;
     netTex.wrapT = THREE.RepeatWrapping;
@@ -1094,13 +1234,15 @@ class PickleballSimulationApp {
 
     const steelPostMat = new THREE.MeshStandardMaterial({
       color: 0x0f172a,
-      roughness: 0.32,
-      metalness: 0.78,
+      roughness: 0.28,
+      metalness: 0.82,
     });
-    const whiteTapeMat = new THREE.MeshStandardMaterial({
+    const whiteTapeMat = new THREE.MeshPhysicalMaterial({
       color: 0xffffff,
-      roughness: 0.38,
+      roughness: 0.34,
       metalness: 0.04,
+      clearcoat: 0.18,
+      clearcoatRoughness: 0.4,
     });
 
     courtRoot.traverse((child) => {
@@ -1123,8 +1265,8 @@ class PickleballSimulationApp {
           color: 0x0f172a,
           map: netTex,
           transparent: true,
-          opacity: 0.86,
-          roughness: 0.72,
+          opacity: 0.88,
+          roughness: 0.65,
           side: THREE.DoubleSide,
         });
       } else if (matName === 'Net_Tape_White_Mat' || matName === 'Court_WhiteLine_Mat') {
@@ -1183,9 +1325,10 @@ class PickleballSimulationApp {
 
     // Two Vertical `BPL INDIA` Banner Panels at Left (x = -2.72m) & Right (x = +2.72m) ends of the net
     const bplNetCanvas = document.createElement('canvas');
-    bplNetCanvas.width = 256;
-    bplNetCanvas.height = 512;
+    bplNetCanvas.width = 512;
+    bplNetCanvas.height = 1024;
     const fCtx = bplNetCanvas.getContext('2d');
+    fCtx.scale(2, 2);
     // Royal-blue outer vertical sleeve
     fCtx.fillStyle = '#15349c';
     fCtx.fillRect(0, 0, 256, 512);
@@ -1218,7 +1361,7 @@ class PickleballSimulationApp {
     bplNetTex.anisotropy = maxAniso;
     const bplNetMat = new THREE.MeshStandardMaterial({
       map: bplNetTex,
-      roughness: 0.45,
+      roughness: 0.42,
       metalness: 0.05,
     });
 
@@ -1236,21 +1379,23 @@ class PickleballSimulationApp {
   }
 
   /**
-   * Upgrades `this.assets.paddle` with a high-contrast Vayu Aero / Bharat Pro Carbon Paddle Texture
-   * (matte T700 raw carbon-fiber weave, crimson-red/white perimeter edge trim, and white Diamond-Chevron crest).
+   * Upgrades `this.assets.paddle` with an Ultra-HD 1024x1024 Vayu Aero / Bharat Pro 3K Raw Carbon Paddle Texture
+   * + tangent-space carbon weave normal map & clearcoat finish.
    */
   upgradePaddleMaterials(paddleRoot) {
+    const maxAniso = this.renderer.capabilities.getMaxAnisotropy();
     const c = document.createElement('canvas');
-    c.width = 512;
-    c.height = 512;
+    c.width = 1024;
+    c.height = 1024;
     const ctx = c.getContext('2d');
+    ctx.scale(2, 2);
 
-    // Matte raw carbon-fiber weave background
+    // Matte 3K raw carbon-fiber weave background
     ctx.fillStyle = '#12151e';
     ctx.fillRect(0, 0, 512, 512);
-    ctx.strokeStyle = 'rgba(255,255,255,0.045)';
-    ctx.lineWidth = 4;
-    for (let i = -512; i < 1024; i += 12) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.058)';
+    ctx.lineWidth = 3.5;
+    for (let i = -512; i < 1024; i += 10) {
       ctx.beginPath();
       ctx.moveTo(i, 0);
       ctx.lineTo(i + 512, 512);
@@ -1295,25 +1440,55 @@ class PickleballSimulationApp {
 
     const paddleFaceTex = new THREE.CanvasTexture(c);
     paddleFaceTex.colorSpace = THREE.SRGBColorSpace;
+    paddleFaceTex.anisotropy = maxAniso;
 
-    const carbonMat = new THREE.MeshStandardMaterial({
+    // 3K Carbon Twill Normal Map for realistic paddle spin grit
+    const cnCanvas = document.createElement('canvas');
+    cnCanvas.width = 256;
+    cnCanvas.height = 256;
+    const cnCtx = cnCanvas.getContext('2d');
+    const cnData = cnCtx.createImageData(256, 256);
+    for (let y = 0; y < 256; y++) {
+      for (let x = 0; x < 256; x++) {
+        const idx = (y * 256 + x) * 4;
+        const twill = ((x + y) & 7) < 4 ? 14 : -14;
+        const cross = ((x - y + 256) & 7) < 4 ? 10 : -10;
+        cnData.data[idx] = 128 + twill;
+        cnData.data[idx + 1] = 128 + cross;
+        cnData.data[idx + 2] = 246;
+        cnData.data[idx + 3] = 255;
+      }
+    }
+    cnCtx.putImageData(cnData, 0, 0);
+    const carbonNormalTex = new THREE.CanvasTexture(cnCanvas);
+    carbonNormalTex.wrapS = THREE.RepeatWrapping;
+    carbonNormalTex.wrapT = THREE.RepeatWrapping;
+    carbonNormalTex.repeat.set(8, 8);
+
+    const carbonMat = new THREE.MeshPhysicalMaterial({
       map: paddleFaceTex,
-      roughness: 0.38,
-      metalness: 0.18,
+      normalMap: carbonNormalTex,
+      normalScale: new THREE.Vector2(0.24, 0.24),
+      roughness: 0.34,
+      metalness: 0.16,
+      clearcoat: 0.34,
+      clearcoatRoughness: 0.28,
     });
-    const edgeGuardMat = new THREE.MeshStandardMaterial({
+    const edgeGuardMat = new THREE.MeshPhysicalMaterial({
       color: 0xe11d48,
-      roughness: 0.35,
+      roughness: 0.3,
       metalness: 0.15,
+      clearcoat: 0.4,
+      clearcoatRoughness: 0.22,
     });
     const gripMat = new THREE.MeshStandardMaterial({
       color: 0x0f172a,
-      roughness: 0.65,
+      roughness: 0.62,
     });
 
     const collarWhiteMat = new THREE.MeshStandardMaterial({
       color: 0xf8fafc,
-      roughness: 0.35,
+      roughness: 0.32,
       metalness: 0.08,
     });
 
@@ -1378,14 +1553,14 @@ class PickleballSimulationApp {
       this.assets.maleGltf = maleGltf;
       this.assets.femaleGltf = femaleGltf;
 
-      // Upgrade 20x44ft USAPA Court with PPA Tour 2025 Stencils & FILA Net
+      // Upgrade 20x44ft USAPA Court with BPL 2025 Ultra-HD Stencils & Portable Pro Net
       this.upgradeCourtMaterials(this.assets.court);
       this.scene.add(this.assets.court);
 
-      // Upgrade Paddle with Selkirk Pro Carbon Face & Red Edge Guard
+      // Upgrade Paddle with Bharat Pro 3K Carbon Face & Crimson Edge Guard
       this.upgradePaddleMaterials(this.assets.paddle);
 
-      // Add 40-Hole USAPA Pickleball with optic neon-yellow finish
+      // Add 40-Hole USAPA Pickleball with optic neon-yellow HD polymer finish
       this.ballMesh = this.assets.ball;
       this.ballMesh.traverse((c) => {
         if (c.isMesh) {
@@ -1394,8 +1569,8 @@ class PickleballSimulationApp {
           if (c.material) {
             c.material.color.setHex(0xd9f926);
             c.material.emissive = new THREE.Color(0x65a30d);
-            c.material.emissiveIntensity = 0.18;
-            c.material.roughness = 0.28;
+            c.material.emissiveIntensity = 0.22;
+            c.material.roughness = 0.24;
             c.material.metalness = 0.04;
           }
         }
@@ -1429,13 +1604,13 @@ class PickleballSimulationApp {
       this.strikeFlashMesh.visible = false;
       this.scene.add(this.strikeFlashMesh);
 
-      // Build 4 Lifelike Rigged Human Athletes (Arjun, Priya, Vikram, Ananya) with Pro Kits
+      // Build 4 Lifelike Rigged Human Athletes (Arjun, Priya, Vikram, Ananya) with Ultra-HD Pro Kits
       this.createAthletes();
 
       // Populate Courtside VIP Sofa Lounge with 2 Relaxed Seated Spectators
       this.populateHumanUmpireAndSpectators();
 
-      // Hide loading screen & launch in Doubles Showcase Pose (matching media_1792490611048.png)
+      // Hide loading screen & launch in Doubles Showcase Pose
       const loadingEl = document.getElementById('loading-overlay');
       if (loadingEl) loadingEl.classList.add('hidden');
 
@@ -1452,14 +1627,46 @@ class PickleballSimulationApp {
   }
 
   /**
-   * Generates a 1024x1024 UV-mapped human facial & skin texture with subsurface warmth,
-   * orbital/nasolabial/jawline anatomical shading, pores, and realistic male beard/stubble.
+   * Generates a repeating 256x256 athletic pique micro-mesh tangent normal map for jerseys, shorts, and visors.
+   */
+  createFabricWeaveNormalMap() {
+    if (this._fabricNormalTex) return this._fabricNormalTex;
+    const c = document.createElement('canvas');
+    c.width = 256;
+    c.height = 256;
+    const ctx = c.getContext('2d');
+    const img = ctx.createImageData(256, 256);
+    for (let y = 0; y < 256; y++) {
+      for (let x = 0; x < 256; x++) {
+        const i = (y * 256 + x) * 4;
+        const wx = Math.sin((x / 4) * Math.PI * 2) * 14;
+        const wy = Math.cos((y / 4) * Math.PI * 2) * 14;
+        img.data[i] = Math.round(128 + wx);
+        img.data[i + 1] = Math.round(128 + wy);
+        img.data[i + 2] = 246;
+        img.data[i + 3] = 255;
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+    const tex = new THREE.CanvasTexture(c);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(18, 18);
+    tex.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
+    this._fabricNormalTex = tex;
+    return tex;
+  }
+
+  /**
+   * Generates an Ultra-HD 2048x2048 UV-mapped human facial & skin texture with subsurface warmth,
+   * orbital/nasolabial/jawline anatomical shading, micro-pores, and realistic male beard/stubble.
    */
   createHumanSkinTexture(baseHex, isFemale = false) {
     const canvas = document.createElement('canvas');
-    canvas.width = 1024;
-    canvas.height = 1024;
+    canvas.width = 2048;
+    canvas.height = 2048;
     const ctx = canvas.getContext('2d');
+    ctx.scale(2, 2);
 
     const baseColor = new THREE.Color(baseHex);
     const r0 = Math.round(baseColor.r * 255);
@@ -1472,13 +1679,13 @@ class PickleballSimulationApp {
     // Helper that converts exact 3D head vertex height vz (in meters) to canvas Y coordinate
     const yFromZ = (vz) => (1.0 - (vz - 1.415) / (1.755 - 1.415)) * 1024;
 
-    // Subtle organic skin pore & melanin micro-variation across entire skin surface
-    for (let i = 0; i < 14000; i++) {
+    // Fine Ultra-HD organic skin pore & melanin micro-variation across entire skin surface
+    for (let i = 0; i < 24000; i++) {
       const x = Math.random() * 1024;
       const y = Math.random() * 1024;
-      const delta = (Math.random() - 0.48) * 10;
-      ctx.fillStyle = `rgba(${Math.max(0, Math.min(255, r0 + delta))}, ${Math.max(0, Math.min(255, g0 + delta * 0.85))}, ${Math.max(0, Math.min(255, b0 + delta * 0.75))}, 0.12)`;
-      ctx.fillRect(x, y, 2, 2);
+      const delta = (Math.random() - 0.48) * 11;
+      ctx.fillStyle = `rgba(${Math.max(0, Math.min(255, r0 + delta))}, ${Math.max(0, Math.min(255, g0 + delta * 0.85))}, ${Math.max(0, Math.min(255, b0 + delta * 0.75))}, 0.13)`;
+      ctx.fillRect(x, y, 1.4, 1.4);
     }
 
     const paintRadialZone = (cx, cy, rx, ry, colorStr) => {
@@ -1496,12 +1703,12 @@ class PickleballSimulationApp {
     };
 
     // Forehead & T-zone warm highlight (vz = 1.675)
-    paintRadialZone(512, yFromZ(1.675), 88, 42, 'rgba(255, 228, 205, 0.18)');
+    paintRadialZone(512, yFromZ(1.675), 88, 42, 'rgba(255, 228, 205, 0.20)');
     // Nose bridge highlight (vz = 1.632)
-    paintRadialZone(512, yFromZ(1.632), 16, 48, 'rgba(255, 232, 212, 0.22)');
+    paintRadialZone(512, yFromZ(1.632), 16, 48, 'rgba(255, 232, 212, 0.24)');
     // Zygomatic cheek subsurface warmth (vz = 1.622)
-    paintRadialZone(436, yFromZ(1.622), 48, 36, isFemale ? 'rgba(215, 85, 78, 0.22)' : 'rgba(190, 78, 66, 0.14)');
-    paintRadialZone(588, yFromZ(1.622), 48, 36, isFemale ? 'rgba(215, 85, 78, 0.22)' : 'rgba(190, 78, 66, 0.14)');
+    paintRadialZone(436, yFromZ(1.622), 48, 36, isFemale ? 'rgba(215, 85, 78, 0.22)' : 'rgba(190, 78, 66, 0.15)');
+    paintRadialZone(588, yFromZ(1.622), 48, 36, isFemale ? 'rgba(215, 85, 78, 0.22)' : 'rgba(190, 78, 66, 0.15)');
     // Nose tip subsurface warmth (vz = 1.608)
     paintRadialZone(512, yFromZ(1.608), 22, 18, 'rgba(195, 78, 66, 0.15)');
 
@@ -1511,7 +1718,7 @@ class PickleballSimulationApp {
 
     // Nasolabial smile-line creases from nostril wings (vz = 1.604) to mouth corners (vz = 1.580)
     ctx.strokeStyle = 'rgba(52, 24, 16, 0.18)';
-    ctx.lineWidth = 4;
+    ctx.lineWidth = 3.5;
     ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.moveTo(488, yFromZ(1.604));
@@ -1522,7 +1729,7 @@ class PickleballSimulationApp {
 
     // Labiomental crease under lower lip (vz = 1.564) & Chin boss highlight (vz = 1.546)
     paintRadialZone(512, yFromZ(1.564), 28, 10, 'rgba(45, 20, 14, 0.18)');
-    paintRadialZone(512, yFromZ(1.546), 28, 18, 'rgba(255, 226, 202, 0.16)');
+    paintRadialZone(512, yFromZ(1.546), 28, 18, 'rgba(255, 226, 202, 0.18)');
 
     // Groomed male athlete 5-o'clock beard/jawline shading strictly on the jaw/chin/mustache (vz = 1.540..1.594)
     if (!isFemale) {
@@ -1537,8 +1744,8 @@ class PickleballSimulationApp {
       paintRadialZone(438, yFromZ(1.568), 54, 42, 'rgba(24, 18, 16, 0.14)');
       paintRadialZone(586, yFromZ(1.568), 54, 42, 'rgba(24, 18, 16, 0.14)');
 
-      ctx.fillStyle = 'rgba(22, 16, 14, 0.22)';
-      for (let i = 0; i < 1800; i++) {
+      ctx.fillStyle = 'rgba(22, 16, 14, 0.24)';
+      for (let i = 0; i < 2400; i++) {
         const fx = 370 + Math.random() * 284;
         const fy = yJawTop + Math.random() * (yJawBot - yJawTop);
         const dx = (fx - 512) / 142;
@@ -1547,7 +1754,7 @@ class PickleballSimulationApp {
         const inMouthHole = Math.abs(fx - 512) < 36 && Math.abs(fy - yMouth) < 22;
         const inUpperCheek = Math.abs(fx - 512) < 88 && fy < yMustache + 6 && Math.abs(fx - 512) > 36;
         if (distSq <= 1.0 && !inMouthHole && !inUpperCheek) {
-          ctx.fillRect(fx, fy, 1.5, 1.8);
+          ctx.fillRect(fx, fy, 1.2, 1.5);
         }
       }
     }
@@ -1555,18 +1762,20 @@ class PickleballSimulationApp {
     const tex = new THREE.CanvasTexture(canvas);
     tex.flipY = false;
     tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
     tex.needsUpdate = true;
     return tex;
   }
 
   /**
-   * Builds the 4 PPA Tour 2025 Athletes styled to match `media_1792490611048.png`:
-   * - `p0` (Arjun - Near Left Male): Sky/ice-blue long-sleeve shirt (#8ec5fc), vibrant purple/magenta shorts (#a82ae3), dark crew socks (#111827), coral-red/white shoes (#ef4444).
-   * - `p1` (Priya - Near Right Female): Crisp white/ice-blue fitted racquet top (#e2f1ff), black athletic shorts/skort (#111827), black sports visor (#111827) + golden-brown ponytail (#9a6e3a), coral-pink shoes (#f45b69).
+   * Builds the 4 BPL 2025 Championship Athletes with Ultra-HD Skin Sheen & Woven Micro-Mesh Kits:
+   * - `p0` (Arjun - Near Left Male): Sky/ice-blue long-sleeve shirt (#8ec5fc), vibrant purple/magenta shorts (#6b215c), dark crew socks (#111827), coral-red/white shoes (#ef4444).
+   * - `p1` (Priya - Near Right Female): Crisp white/ice-blue fitted racquet top (#e2f1ff), black athletic skort (#111827), black sports visor + golden-brown ponytail, coral-pink shoes (#f45b69).
    * - `p2` (Vikram - Far Left Male): Black pro jersey (#111827) with white long compression sleeves (#f8fafc) & white headband, black shorts (#111827), white socks, red/white shoes.
-   * - `p3` (Ananya - Far Right Female): Sky-blue fitted tank top (#7dd3fc), black pleated court skirt (#111827), dark navy visor/cap (#0f172a), dark/white shoes.
+   * - `p3` (Ananya - Far Right Female): Sky-blue fitted tank top (#7dd3fc), black pleated court skirt (#111827), dark navy visor (#0f172a), dark/white shoes.
    */
   createAthletes() {
+    const fabricNormalMap = this.createFabricWeaveNormalMap();
     const configs = [
       {
         id: 'p0',
@@ -1644,6 +1853,19 @@ class PickleballSimulationApp {
       root.name = `Player_${cfg.id}`;
 
       const humanSkinTex = this.createHumanSkinTexture(cfg.skinHex, cfg.gender === 'female');
+      const physicalSkinMat = new THREE.MeshPhysicalMaterial({
+        name: `UltraHDSkin_${cfg.id}`,
+        color: 0xffffff,
+        map: humanSkinTex,
+        roughness: 0.42,
+        metalness: 0.01,
+        sheen: 0.35,
+        sheenRoughness: 0.65,
+        sheenColor: new THREE.Color(0xffbfa8),
+        clearcoat: 0.06,
+        clearcoatRoughness: 0.56,
+        envMapIntensity: 0.34,
+      });
 
       let skinnedMesh = null;
       const skinnedMeshes = [];
@@ -1677,66 +1899,104 @@ class PickleballSimulationApp {
             child.material = child.material.clone();
           }
 
-          const mats = Array.isArray(child.material) ? child.material : [child.material];
-          mats.forEach((m) => {
-            if (!m) return;
+          const upgradeOneMat = (m) => {
+            if (!m) return m;
             const mName = m.name || '';
 
             if (mName.startsWith('Lips_')) {
               m.color.setHex(cfg.gender === 'female' ? 0xb5534c : 0x944840);
-              m.roughness = 0.36;
-            } else if (mName.startsWith('IndianSkin_') || mName.startsWith('Cheek_') || /skin/i.test(mName)) {
-              m.color.setHex(0xffffff);
-              m.map = humanSkinTex;
-              m.roughness = 0.44;
-              m.metalness = 0.02;
-              m.envMapIntensity = 0.25;
-              m.needsUpdate = true;
-            } else if (/hair/i.test(mName)) {
+              m.roughness = 0.34;
+              return m;
+            }
+            if (mName.startsWith('IndianSkin_') || mName.startsWith('Cheek_') || /skin/i.test(mName)) {
+              return physicalSkinMat;
+            }
+            if (/hair/i.test(mName)) {
               m.color.setHex(cfg.hairHex);
-              m.roughness = 0.78;
-              m.metalness = 0.04;
-              m.envMapIntensity = 0.18;
-            } else if (/jersey|shirt|top|tank/i.test(mName)) {
+              m.roughness = 0.74;
+              m.metalness = 0.05;
+              m.envMapIntensity = 0.24;
+              return m;
+            }
+            if (/jersey|shirt|top|tank/i.test(mName)) {
               m.color.setHex(cfg.jerseyHex);
-              m.roughness = 0.58;
-            } else if (/collar|trim/i.test(mName)) {
+              m.roughness = 0.54;
+              m.normalMap = fabricNormalMap;
+              m.normalScale = new THREE.Vector2(0.24, 0.24);
+              m.needsUpdate = true;
+              return m;
+            }
+            if (/collar|trim/i.test(mName)) {
               m.color.setHex(cfg.trimHex);
-              m.roughness = 0.52;
-            } else if (/sleeve/i.test(mName)) {
+              m.roughness = 0.5;
+              m.normalMap = fabricNormalMap;
+              m.normalScale = new THREE.Vector2(0.2, 0.2);
+              m.needsUpdate = true;
+              return m;
+            }
+            if (/sleeve/i.test(mName)) {
               if (cfg.sleeveHex) {
                 m.color.setHex(cfg.sleeveHex);
-                m.roughness = 0.54;
-              } else {
-                m.color.setHex(0xffffff);
-                m.map = humanSkinTex;
-                m.roughness = 0.44;
+                m.roughness = 0.52;
+                m.normalMap = fabricNormalMap;
+                m.normalScale = new THREE.Vector2(0.22, 0.22);
                 m.needsUpdate = true;
+                return m;
               }
-            } else if (/short|bottom|skirt|skort/i.test(mName)) {
+              return physicalSkinMat;
+            }
+            if (/short|bottom|skirt|skort/i.test(mName)) {
               m.color.setHex(cfg.shortsHex);
-              m.roughness = 0.62;
-            } else if (/sock/i.test(mName)) {
+              m.roughness = 0.58;
+              m.normalMap = fabricNormalMap;
+              m.normalScale = new THREE.Vector2(0.24, 0.24);
+              m.needsUpdate = true;
+              return m;
+            }
+            if (/sock/i.test(mName)) {
               m.color.setHex(cfg.sockHex);
-              m.roughness = 0.72;
-            } else if (/shoe_whitemesh|accent|shoe/i.test(mName) && !/gum|rubber|sole/i.test(mName)) {
+              m.roughness = 0.68;
+              m.normalMap = fabricNormalMap;
+              m.normalScale = new THREE.Vector2(0.2, 0.2);
+              m.needsUpdate = true;
+              return m;
+            }
+            if (/shoe_whitemesh|accent|shoe/i.test(mName) && !/gum|rubber|sole/i.test(mName)) {
               m.color.setHex(cfg.shoeHex);
-              m.roughness = 0.42;
-            } else if (/gum|rubber|sole/i.test(mName)) {
+              m.roughness = 0.38;
+              return m;
+            }
+            if (/gum|rubber|sole/i.test(mName)) {
               m.color.setHex(cfg.soleHex);
-              m.roughness = 0.55;
-            } else if (/visor|cap|headband/i.test(mName)) {
+              m.roughness = 0.52;
+              return m;
+            }
+            if (/visor|cap|headband/i.test(mName)) {
               if (!cfg.headwear) {
                 child.visible = false;
               } else if (cfg.headwear === 'headband_white') {
                 m.color.setHex(0xf8fafc);
                 m.roughness = 0.45;
+                m.normalMap = fabricNormalMap;
+                m.normalScale = new THREE.Vector2(0.2, 0.2);
+                m.needsUpdate = true;
               } else {
                 m.color.setHex(0x111827);
-                m.roughness = 0.45;
+                m.roughness = 0.42;
+                m.normalMap = fabricNormalMap;
+                m.normalScale = new THREE.Vector2(0.2, 0.2);
+                m.needsUpdate = true;
               }
+              return m;
             }
-          });
+            return m;
+          };
+
+          if (Array.isArray(child.material)) {
+            child.material = child.material.map(upgradeOneMat);
+          } else {
+            child.material = upgradeOneMat(child.material);
+          }
         }
       });
 
@@ -2367,23 +2627,21 @@ class PickleballSimulationApp {
     if (this.rules.mode !== 'training' || !hitter.isHuman) return;
     const idx = this.rules.trainingIndex;
 
-    if (idx === 0 && shotType === 'dink') {
+    if (idx === 0) {
       const pBounce = telemetry.predictedBounce;
       if (
         pBounce &&
         Math.abs(pBounce.x) <= COURT_SPECS.HALF_WIDTH &&
         pBounce.z < 0 &&
-        Math.abs(pBounce.z) <= COURT_SPECS.NVZ_DEPTH + 0.25
+        Math.abs(pBounce.z) <= COURT_SPECS.NVZ_DEPTH + 0.55
       ) {
-        this.advanceTrainingGoal('Legal Crosscourt Dink landed softly inside the Kitchen!');
+        this.advanceTrainingGoal('Soft Kitchen Dink landed cleanly inside Coach Vikram’s Blue Kitchen!');
       }
-    } else if (
-      idx === 2 &&
-      this.rules.rallyShotCount === 3 &&
-      (shotType === 'drop' || shotType === 'dink')
-    ) {
-      this.advanceTrainingGoal('Textbook 3rd-Shot Drop / Lob executed after Bounce #2!');
-    } else if (idx === 4) {
+    } else if (idx === 2 && this.rules.rallyShotCount === 3) {
+      this.advanceTrainingGoal(
+        `Double-Bounce Rule mastered! Legal 3rd-Shot (${telemetry.shotLabel}) hit after Bounce #2!`
+      );
+    } else if (idx === 4 && shotType !== 'serve') {
       this.advanceTrainingGoal(
         `${telemetry.shotLabel} (${telemetry.spinRpm} RPM ${telemetry.spinType}) executed!`
       );
@@ -2736,6 +2994,15 @@ class PickleballSimulationApp {
       pillEl.className = 'on-court-helper-pill';
       iconEl.textContent = '🇮🇳';
       textEl.innerHTML = '1-Tap <strong>Trackpad</strong> or press <strong>SPACE</strong> to Play!';
+    } else if (
+      !this.physics.inPlay &&
+      this.rules.mode === 'training' &&
+      this.rules.trainingIndex === 0
+    ) {
+      pillEl.className = 'on-court-helper-pill state-hit';
+      iconEl.textContent = '🎓';
+      textEl.innerHTML =
+        'LESSON 1: <strong>1-Tap Trackpad</strong> or <strong>SPACE</strong> to Dink into Blue Kitchen!';
     } else if (this.rules.rallyPhase === 'pre_serve') {
       if (this.rules.servingTeam === 0) {
         pillEl.className = 'on-court-helper-pill state-hit';
@@ -2766,10 +3033,46 @@ class PickleballSimulationApp {
   }
 
   /**
+   * Highlights the active 1-2-3 step inside #lesson-steps-checklist in real time during Training Mode
+   */
+  updateCoachLiveStepHighlight() {
+    if (this.rules.mode !== 'training') return;
+    const listEl = document.getElementById('lesson-steps-checklist');
+    if (!listEl || !listEl.children.length) return;
+    const mod = TRAINING_MODULES[this.rules.trainingIndex];
+    if (!mod) return;
+
+    const allDone = this.rules.trainingProgress >= mod.targetGoals;
+    let activeStepIdx = 0;
+
+    if (this.rules.trainingIndex === 0) {
+      // Lesson 1: 0 = Ready at Kitchen line, 1 = Feed ball, 2 = Rally & land 3 soft dinks
+      activeStepIdx = !this.physics.inPlay ? 1 : 2;
+    } else if (this.rules.trainingIndex === 1) {
+      // Lesson 2: 0 = Aim in green box, 1 = Tap/Space to serve, 2 = Watch bounce & rally
+      activeStepIdx = this.rules.rallyPhase === 'pre_serve' ? 1 : 2;
+    } else if (this.rules.trainingIndex === 2) {
+      // Lesson 3: 0 = Serve, 1 = Wait for return bounce, 2 = Hit 3rd-shot Drop/Lob
+      if (this.rules.rallyPhase === 'pre_serve') activeStepIdx = 0;
+      else if (this.rules.bouncesInRally < 2 && this.physics.bounceCountOnCurrentSide === 0) activeStepIdx = 1;
+      else activeStepIdx = 2;
+    } else {
+      activeStepIdx = this.rules.rallyPhase === 'pre_serve' ? 0 : this.rules.bouncesInRally < 2 ? 1 : 2;
+    }
+
+    Array.from(listEl.children).forEach((li, idx) => {
+      li.classList.toggle('done-step', allDone || idx < activeStepIdx);
+      li.classList.toggle('active-step', !allDone && idx === activeStepIdx);
+    });
+  }
+
+  /**
    * Updates the bottom on-screen prompt banner & highlights the recommended shot key (1-6)
    * (and auto-selects it when Smart Shot Assist is ON!)
    */
   updateLiveKeyPrompt() {
+    this.updateCoachLiveStepHighlight();
+
     const badgeEl = document.getElementById('prompt-phase-badge');
     const textEl = document.getElementById('prompt-action-text');
     const strikeCapEl = document.getElementById('strike-btn-caption');
@@ -2778,7 +3081,17 @@ class PickleballSimulationApp {
 
     let recShot = 'drive';
 
-    if (this.rules.rallyPhase === 'pre_serve') {
+    if (
+      !this.physics.inPlay &&
+      this.rules.mode === 'training' &&
+      this.rules.trainingIndex === 0
+    ) {
+      recShot = 'dink';
+      badgeEl.textContent = '🎓 LESSON 1 • KITCHEN DINK';
+      textEl.innerHTML =
+        'Stand behind the white Kitchen line • <strong>1-Tap Trackpad</strong> or press <kbd class="inline-kbd pulse">SPACE</kbd> to feed a Soft Dink into the Blue Kitchen!';
+      if (strikeCapEl) strikeCapEl.textContent = '1-TAP / SPACE = SOFT DINK';
+    } else if (this.rules.rallyPhase === 'pre_serve') {
       if (this.rules.servingTeam === 0) {
         recShot = 'drive';
         badgeEl.textContent = '🎯 YOUR SERVE';
@@ -2795,12 +3108,29 @@ class PickleballSimulationApp {
     } else if (this.physics.inPlay) {
       const ballComingToYou = this.physics.vel.z > 0;
       if (ballComingToYou) {
-        if (this.rules.bouncesInRally < 2 && this.physics.bounceCountOnCurrentSide === 0) {
+        if (this.rules.mode === 'training' && this.rules.trainingIndex === 0) {
+          recShot = 'dink';
+          badgeEl.textContent =
+            this.physics.bounceCountOnCurrentSide === 0 ? '⏳ LET IT BOUNCE' : '🍯 TAP TO DINK!';
+          textEl.innerHTML =
+            '<strong>Kitchen Rule:</strong> Let Coach Vikram’s ball bounce once, then <strong>1-Tap / SPACE</strong> (or <kbd class="inline-kbd">K</kbd>) to land a Soft Dink!';
+          if (strikeCapEl) strikeCapEl.textContent = 'TAP / SPACE = SOFT DINK';
+        } else if (this.rules.bouncesInRally < 2 && this.physics.bounceCountOnCurrentSide === 0) {
           recShot = this.rules.bouncesInRally === 1 ? 'drop' : 'drive';
           badgeEl.textContent = '⏳ WAIT FOR BOUNCE';
           textEl.innerHTML =
             '<strong>Double-Bounce Rule:</strong> Let it bounce first! Then <strong>1-Tap / SPACE</strong> for Normal Hit, or <strong>2-Finger Tap / [L]</strong> for High Lob!';
           if (strikeCapEl) strikeCapEl.textContent = 'WAIT FOR BOUNCE → TAP';
+        } else if (
+          this.rules.mode === 'training' &&
+          this.rules.trainingIndex === 2 &&
+          this.rules.rallyShotCount === 2
+        ) {
+          recShot = 'drop';
+          badgeEl.textContent = '🌈 HIT 3RD-SHOT DROP / LOB!';
+          textEl.innerHTML =
+            'Bounce #2 complete! <strong>1-Tap / SPACE</strong> or <strong>2-Finger Tap / <kbd class="inline-kbd">L</kbd></strong> to arc your 3rd-Shot Drop!';
+          if (strikeCapEl) strikeCapEl.textContent = 'TAP / [L] = 3RD-SHOT DROP';
         } else if (this.physics.pos.y > 1.42) {
           recShot = 'smash';
           badgeEl.textContent = '💥 HIGH BALL SMASH!';
@@ -3114,6 +3444,25 @@ class PickleballSimulationApp {
         // If AI is serving and user taps, trigger AI serve immediately so user never waits!
         this.autoServeCooldown = 0.05;
       }
+      return;
+    }
+
+    // Training Lesson 1 (Kitchen Soft Net Dink): ball starts on your paddle at the Kitchen line!
+    if (!this.physics.inPlay && this.rules.mode === 'training' && this.rules.trainingIndex === 0) {
+      const dinkTarget = new THREE.Vector3(
+        THREE.MathUtils.clamp(this.aimTarget.x, -2.5, 2.5),
+        0.0368,
+        THREE.MathUtils.clamp(this.aimTarget.z, -2.0, -0.85)
+      );
+      this.performPlayerStrike(human, {
+        shotType: 'dink',
+        target: dinkTarget,
+        power: 0.72,
+        pitchOffset: 6,
+        yawOffset: 0,
+        brushOffset: 0,
+        sweetSpot: 0.98,
+      });
       return;
     }
 
@@ -3478,6 +3827,18 @@ class PickleballSimulationApp {
       });
     }
 
+    // Top-Bar Ultra-HD (4K PBR + 4x MSAA + Broadcast Bloom) Toggle
+    const btnToggleHd = document.getElementById('btn-toggle-hd');
+    if (btnToggleHd) {
+      btnToggleHd.addEventListener('click', () => {
+        this.applyGraphicsQuality(!this.ultraHdEnabled);
+        btnToggleHd.classList.toggle('active', this.ultraHdEnabled);
+        btnToggleHd.textContent = this.ultraHdEnabled
+          ? '✨ Ultra HD: ON'
+          : '⚡ Standard HD';
+      });
+    }
+
     // Top-Bar Beginner Pace Toggle (Easy 75% / Normal 90% / Pro 100%)
     const btnPace = document.getElementById('btn-toggle-pace');
     if (btnPace) {
@@ -3539,13 +3900,42 @@ class PickleballSimulationApp {
       });
     });
 
-    // Training Module Selector Buttons
+    // Training Module Selector Buttons (1–5)
     document.querySelectorAll('[data-lesson-idx]').forEach((btn) => {
       btn.addEventListener('click', () => {
+        this.sound.init();
         const idx = Number(btn.getAttribute('data-lesson-idx'));
         this.startMode('training', idx);
       });
     });
+
+    // Interactive Coach Action Buttons: "🎾 Feed / Reset Ball" & "Next Lesson →"
+    const btnCoachFeed = document.getElementById('btn-coach-feed');
+    if (btnCoachFeed) {
+      btnCoachFeed.addEventListener('click', () => {
+        this.sound.init();
+        this.exitShowcaseFreeze();
+        clearTimeout(this.nextPointTimeout);
+        this.setupPointPositions();
+        // Immediately launch the drill's opening ball so user can rally right away!
+        if (this.rules.mode === 'training') {
+          if (this.rules.trainingIndex === 0 || this.rules.servingTeam === 0) {
+            this.triggerHumanSwing();
+          } else {
+            this.autoServeCooldown = 0.05;
+          }
+        }
+      });
+    }
+
+    const btnCoachNext = document.getElementById('btn-coach-next');
+    if (btnCoachNext) {
+      btnCoachNext.addEventListener('click', () => {
+        this.sound.init();
+        const nextIdx = (this.rules.trainingIndex + 1) % TRAINING_MODULES.length;
+        this.startMode('training', nextIdx);
+      });
+    }
 
     // Shot Type Selector Buttons
     document.querySelectorAll('[data-shot-btn]').forEach((btn) => {
@@ -3793,11 +4183,39 @@ class PickleballSimulationApp {
       const descEl = document.getElementById('lesson-summary');
       const tipEl = document.getElementById('lesson-tip');
       const progEl = document.getElementById('lesson-progress');
+      const progFillEl = document.getElementById('lesson-progress-fill');
+      const checklistEl = document.getElementById('lesson-steps-checklist');
+      const nextBtnEl = document.getElementById('btn-coach-next');
+
+      const clampedProg = Math.min(mod.targetGoals, this.rules.trainingProgress);
+      const isDone = clampedProg >= mod.targetGoals;
+
       if (titleEl) titleEl.textContent = mod.title;
       if (subEl) subEl.textContent = mod.subtitle;
       if (descEl) descEl.textContent = mod.ruleSummary;
-      if (tipEl) tipEl.textContent = mod.proTip;
-      if (progEl) progEl.textContent = `${this.rules.trainingProgress} / ${mod.targetGoals} Completed`;
+      if (tipEl) tipEl.textContent = mod.recommendedKey || mod.proTip;
+      if (progEl) {
+        progEl.textContent = isDone
+          ? `✅ ${clampedProg} / ${mod.targetGoals} Done!`
+          : `${clampedProg} / ${mod.targetGoals} Completed`;
+        progEl.classList.toggle('completed', isDone);
+      }
+      if (progFillEl) {
+        const pct = Math.round((clampedProg / Math.max(1, mod.targetGoals)) * 100);
+        progFillEl.style.width = `${pct}%`;
+      }
+      if (checklistEl && Array.isArray(mod.steps)) {
+        checklistEl.innerHTML = mod.steps
+          .map((stepText) => `<li>${stepText}</li>`)
+          .join('');
+      }
+      if (nextBtnEl) {
+        nextBtnEl.classList.toggle('ready-pulse', isDone);
+        const nextIdx = (this.rules.trainingIndex + 1) % TRAINING_MODULES.length;
+        nextBtnEl.textContent =
+          nextIdx === 0 ? 'Restart Lessons ↺' : `Next: Lesson ${nextIdx + 1} →`;
+      }
+      this.updateCoachLiveStepHighlight();
     }
   }
 
@@ -3962,12 +4380,17 @@ class PickleballSimulationApp {
     const w = window.innerWidth;
     const h = window.innerHeight;
 
-    // 1. Full-Screen Main Broadcast Camera
+    // 1. Full-Screen Main Broadcast Camera (Ultra-HD 4x MSAA + Broadcast Bloom Composer)
     this.renderer.setViewport(0, 0, w, h);
     this.renderer.setScissor(0, 0, w, h);
     this.renderer.setScissorTest(false);
-    this.renderer.clear();
-    this.renderer.render(this.scene, this.camera);
+    if (this.composer && this.ultraHdEnabled) {
+      this.composer.render();
+    } else {
+      this.renderer.setRenderTarget(null);
+      this.renderer.clear();
+      this.renderer.render(this.scene, this.camera);
+    }
 
     // Skip secondary PiP portrait scissor render when Clean Broadcast HUD mode is active
     if (document.body.classList.contains('broadcast-clean-hud')) return;
@@ -3988,28 +4411,47 @@ class PickleballSimulationApp {
     this.faceCamera.aspect = pipW / pipH;
     this.faceCamera.updateProjectionMatrix();
 
-    // Position portrait camera right in front of the athlete's face based on their facing direction!
+    // Position portrait camera & soft studio portrait fill light right in front of the athlete's actual 3D Head bone!
     const yaw = targetPlayer.root.rotation.y;
     const fwdX = Math.sin(yaw);
     const fwdZ = Math.cos(yaw);
     const facePos = new THREE.Vector3(
       targetPlayer.pos.x,
-      1.56,
+      1.54,
       targetPlayer.pos.z
     );
+    if (targetPlayer.headBone) {
+      targetPlayer.root.updateMatrixWorld(true);
+      targetPlayer.headBone.getWorldPosition(facePos);
+      facePos.y += 0.08;
+    }
     this.faceCamera.position.set(
-      facePos.x + fwdX * 0.86 + fwdZ * 0.12,
-      1.59,
-      facePos.z + fwdZ * 0.86 - fwdX * 0.12
+      facePos.x + fwdX * 0.72 + fwdZ * 0.10,
+      facePos.y + 0.02,
+      facePos.z + fwdZ * 0.72 - fwdX * 0.10
     );
-    this.faceCamera.lookAt(facePos.x, 1.54, facePos.z);
+    this.faceCamera.lookAt(facePos.x, facePos.y - 0.01, facePos.z);
 
+    if (this.pipPortraitLight) {
+      this.pipPortraitLight.position.set(
+        facePos.x + fwdX * 0.95 + fwdZ * 0.22,
+        facePos.y + 0.20,
+        facePos.z + fwdZ * 0.95 - fwdX * 0.22
+      );
+      this.pipPortraitLight.intensity = 2.0;
+    }
+
+    this.renderer.setRenderTarget(null);
     this.renderer.setViewport(pipLeft, pipBottom, pipW, pipH);
     this.renderer.setScissor(pipLeft, pipBottom, pipW, pipH);
     this.renderer.setScissorTest(true);
     this.renderer.clearDepth();
     this.renderer.render(this.scene, this.faceCamera);
     this.renderer.setScissorTest(false);
+
+    if (this.pipPortraitLight) {
+      this.pipPortraitLight.intensity = 0;
+    }
   }
 
   animate() {

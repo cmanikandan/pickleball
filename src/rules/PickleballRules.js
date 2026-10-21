@@ -9,12 +9,18 @@ export const TRAINING_MODULES = [
   {
     id: 'kitchen_dink',
     stepNumber: 1,
-    title: '1. The Non-Volley Zone ("The Kitchen")',
-    subtitle: '7-Foot No-Volley Zone & Crosscourt Dink Mastery',
+    title: '1. The Kitchen & Soft Net Dink',
+    subtitle: 'Learn the 7-Foot No-Volley Zone right at the net',
     ruleSummary:
-      'The 7-foot zone on each side of the net is the Non-Volley Zone (The Kitchen). You may NEVER volley a ball out of the air while touching the Kitchen or its 2-inch line. However, you CAN step in to hit a ball that has already bounced!',
+      'The light-blue 7-foot box on each side of the net is called "The Kitchen" (Non-Volley Zone). Rule: You CANNOT hit the ball out of the air while your feet touch the Blue Kitchen. You MUST let it bounce first — or stand behind the white Kitchen line!',
     proTip:
-      'Stay just behind the 7ft NVZ line (z = 2.18m), let the AI coach’s dink bounce, and use a soft Crosscourt Dink (Key [2] or Dink preset, ~32° open paddle face) into the highlighted Kitchen target.',
+      'Tap the Laptop Trackpad (or press SPACE / Key K) to start! Wait for Coach Vikram’s ball to bounce, then gently tap it back into his light-blue Kitchen 3 times.',
+    steps: [
+      '1️⃣ Stand just behind the white Kitchen line (Coach placed you here!).',
+      '2️⃣ 1-Tap Trackpad or press SPACE to start the soft net rally.',
+      '3️⃣ Let Coach’s ball bounce, then tap Trackpad or [K] to land 3 soft Dinks in the Blue Kitchen!',
+    ],
+    recommendedKey: '1-Tap Trackpad or [2] / [K] (Soft Dink)',
     targetGoals: 3,
     showKitchenZone: true,
     showServeZone: false,
@@ -24,12 +30,18 @@ export const TRAINING_MODULES = [
   {
     id: 'underhand_serve',
     stepNumber: 2,
-    title: '2. Legal Underhand Serve & Diagonal Box',
-    subtitle: 'Pendulum Arc & Crosscourt Service Zone',
+    title: '2. Diagonal Underhand Serve',
+    subtitle: 'Serve cross-court past the Blue Kitchen',
     ruleSummary:
-      'All serves must be hit underhand (paddle contact below the navel in an upward arc, paddle head below wrist). The serve must clear the Kitchen (including the NVZ line!) and bounce inside the diagonal crosscourt service box.',
+      'Every point starts with an underhand serve from behind the baseline. To be legal, your serve MUST clear the opponent’s Blue Kitchen (including its line) and bounce inside the glowing Green Diagonal Box!',
     proTip:
-      'Aim into the glowing diagonal service box beyond the Kitchen line. Try adding Topspin (+Brush Angle) so the Magnus effect dips the serve deep near the baseline!',
+      'Move your cursor on the Laptop Trackpad to aim inside the glowing Green Box, then 1-Tap Trackpad or press SPACE to serve 3 legal serves!',
+    steps: [
+      '1️⃣ Move your Trackpad cursor so the target ring sits inside the glowing Green Box.',
+      '2️⃣ 1-Tap Trackpad or press SPACE to hit an underhand serve.',
+      '3️⃣ Land 3 clean serves inside the diagonal Green Box (clearing the Blue Kitchen)!',
+    ],
+    recommendedKey: 'Aim in Green Box → 1-Tap Trackpad / [SPACE]',
     targetGoals: 3,
     showKitchenZone: true,
     showServeZone: true,
@@ -39,12 +51,18 @@ export const TRAINING_MODULES = [
   {
     id: 'double_bounce',
     stepNumber: 3,
-    title: '3. The Double-Bounce Rule & 3rd-Shot Drop',
-    subtitle: 'Mandatory Two Bounces Before Volleying',
+    title: '3. The Two-Bounce Rule & High Drop',
+    subtitle: 'Why you must wait for 2 bounces at the start of a point',
     ruleSummary:
-      'After the serve, the receiving team MUST let the serve bounce once (Bounce #1), and the serving team MUST let the return of serve bounce once (Bounce #2). Only after Bounce #2 can either team volley the ball out of the air!',
+      'Pickleball’s golden rule: (1) Your serve MUST bounce once on the AI’s side, and (2) the AI’s return MUST bounce once on YOUR side before anyone can hit the ball out of the air! After Bounce #2, hit a soft High Drop/Lob to move up.',
     proTip:
-      'Serve the ball, stay behind the baseline until the AI return bounces (Bounce #2), then hit a 3rd-Shot Drop (Key [3]) softly into the opponent’s Kitchen and advance to the NVZ line!',
+      'Step A: Tap to Serve. Step B: WAIT for Coach’s return to bounce on your side! Step C: Press [L] / 2-Finger Tap (or 1-Tap with Auto-Shot ON) to float a 3rd-Shot Drop over the net!',
+    steps: [
+      '1️⃣ 1-Tap Trackpad or press SPACE to serve cross-court.',
+      '2️⃣ WAIT! Let Coach Vikram’s return bounce once on your side (Bounce #2).',
+      '3️⃣ Hit a High Lob/Drop ([L], 2-Finger Tap, or 1-Tap) over the net 2 times!',
+    ],
+    recommendedKey: 'Serve → Let Bounce → [L] or 2-Finger Tap (Drop/Lob)',
     targetGoals: 2,
     showKitchenZone: true,
     showServeZone: false,
@@ -54,12 +72,18 @@ export const TRAINING_MODULES = [
   {
     id: 'sideout_scoring',
     stepNumber: 4,
-    title: '4. Side-Out Scoring & Doubles 0-0-2 Rules',
-    subtitle: 'Server 1 / Server 2 Rotation & Court Switching',
+    title: '4. How 0 - 0 - 2 Doubles Scoring Works',
+    subtitle: 'Only the serving team can win a point!',
     ruleSummary:
-      'Only the serving team can score points! Doubles starts at 0-0-2 (Server #2) so the first lost rally is an immediate Side-Out. On each point won, the serving partners switch Left/Right courts. After Side-Out, both partners get a turn (Server #1 then Server #2).',
+      'The 3 numbers (like 0 - 0 - 2) mean: [Your Score] - [Opponent Score] - [Server #1 or #2]. Only the SERVING team scores points! When you win a point, you & Priya switch Left/Right sides. When both partners lose their serve, it’s a "Side-Out" to the other team.',
     proTip:
-      'Play live Doubles points with your AI partner! Watch the 3D role tags above each athlete update as you win points (partners switch sides) or lose rallies (Server 1 -> Server 2 -> Side Out).',
+      'Play 3 live Doubles rallies with Priya (your AI partner)! Watch the Top Scoreboard explain every point, side-switch, and Server #1 / #2 change.',
+    steps: [
+      '1️⃣ Check the Top Scoreboard: "0 - 0 - 2" means 0 to 0, Server #2.',
+      '2️⃣ Tap Trackpad or press SPACE to play a full Doubles point with Priya.',
+      '3️⃣ Complete 3 live rallies and watch how points & Side-Outs work!',
+    ],
+    recommendedKey: '1-Tap Trackpad / [SPACE] to Play 3 Doubles Rallies',
     targetGoals: 3,
     showKitchenZone: true,
     showServeZone: true,
@@ -69,12 +93,18 @@ export const TRAINING_MODULES = [
   {
     id: 'physics_lab',
     stepNumber: 5,
-    title: '5. Pro Shot-Shaping & Aerodynamics Lab',
-    subtitle: '40-Hole Drag, Magnus Spin & Paddle Contact Angles',
+    title: '5. Spin, Lob & Power Smash Lab',
+    subtitle: 'Master Trackpad Scroll Spin, Lobs & Overhead Winners',
     ruleSummary:
-      'Adjust explicit Paddle Face Pitch (open/closed), Yaw (crosscourt angle), and Swing Brush (Topspin vs Backspin Slice) along with outdoor crosswind to master high-level shot shaping, Kitchen Punch Volleys, and Overhead Smashes.',
+      'Now put it all together! Use 2-Finger Scroll Up on your trackpad (or [R]) for Topspin dip, 2-Finger Scroll Down (or [F]/[X]) for Backspin Slice, 2-Finger Tap (or [L]) for a High Lob, and [M] / [5] for an Overhead Smash!',
     proTip:
-      'Experiment with Topspin Drives (1850+ RPM Magnus dip), Backspin Slices (floating air path + low skid), Kitchen Volleys (Key [4]), and Overhead Smashes (Key [5]).',
+      'Coach Vikram will mix in high lobs! Try scrolling on your trackpad to add spin and hit 5 shaped shots (Topspin, Slice, Lob, or Smash).',
+    steps: [
+      '1️⃣ Scroll 2 Fingers Up/Down on Trackpad (or click ↑Top / ↓Spin) to dial in spin.',
+      '2️⃣ Tap Trackpad / SPACE to serve & rally with Coach Vikram.',
+      '3️⃣ Hit 5 shots trying Lob ([L]/2-Finger Tap), Slice ([X]), or Smash ([M])!',
+    ],
+    recommendedKey: '2-Finger Scroll = Spin • [L] = Lob • [M] = Smash',
     targetGoals: 5,
     showKitchenZone: true,
     showServeZone: false,

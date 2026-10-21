@@ -1,28 +1,32 @@
-# 🇮🇳 Bharat Pickleball League (BPL 2025) — 3D Pickleball Simulator & Interactive Rule Trainer
+# 🇮🇳 Bharat Pickleball League (BPL 2025) — Ultra-HD 3D Pickleball Simulator & Interactive Coach
 
-A realistic **3D WebGL Pickleball Simulation Game** and **Interactive USAPA / AIPA Rule Trainer** built with **Three.js**, **Web Audio API**, and **Blender MCP** procedurally generated 3D Indian pro athletes, equipment, and stadium court assets — featuring **100% original, copyright-free Indian Tour branding** and **extensive Laptop Trackpad + Beginner Controls**.
+A realistic **Ultra-HD 3D WebGL Pickleball Simulation Game** and **Interactive Step-by-Step USAPA / AIPA Rule Coach** built with **Three.js** (`4x MSAA` + `UnrealBloom` + `4K PBR Materials`), **Web Audio API**, and **Blender MCP** procedurally generated 3D Indian pro athletes, equipment, and stadium court assets — featuring **100% original, copyright-free Indian Tour branding** and **extensive Laptop Trackpad + Beginner Controls**.
 
 ---
 
-## 📸 Actual Live Game Screenshots
+## 📸 Actual Live Ultra-HD Game Screenshots
 
-### 1. Bharat Pickleball League (BPL 2025) Broadcast View & Live Scoreboards
+### 1. Bharat Pickleball League (BPL 2025) Ultra-HD Broadcast View & Live Scoreboards
 ![Pro Broadcast Center Court View](public/screenshots/broadcast_view.png)
-*Bharat Pickleball League (BPL 2025) indoor/night Mumbai Championship Arena featuring 100% original Indian tour branding (`BHARAT PRO` Kitchen stencils, `BHARAT PICKLEBALL LEAGUE (BPL)` baseline logo, `khel`, `BHARATPICKLEBALL.IN`, `AGNI SPORT`, and `GARUDA PRO INDIA` apron decals), portable tournament net with `BPL` Diamond-Lotus banners, back arena mural (`SURYA FIT INDIA`, `BPL INDIA 2025`, `VAYU AERO`), Top-Left BPL TV Scorebug + Center-Top Live Scoreboard Pill, Floating 3D On-Court Action Coach Pill, and Everyday Shot + Trackpad Deck.*
+*Ultra-HD (`4096×6144` acrylic clearcoat court + `4x MSAA` + `4096×4096` shadows) Bharat Pickleball League (BPL 2025) indoor/night Mumbai Championship Arena featuring 100% original Indian tour branding (`BHARAT PRO` Kitchen stencils, `BHARAT PICKLEBALL LEAGUE (BPL)` baseline logo, `khel`, `BHARATPICKLEBALL.IN`, `AGNI SPORT`, and `GARUDA PRO INDIA` apron decals), portable tournament net with braided cord mesh & `BPL` Diamond-Lotus banners, overhead LED floodlight trusses, Top-Left BPL TV Scorebug + Center-Top Live Scoreboard Pill, Floating 3D On-Court Action Coach Pill, and Everyday Shot + Trackpad Deck.*
 
-### 2. BPL Championship 2v2 Doubles Match (`0 - 0 - 2` Side-Out Scoring & Full Broadcast HUD)
+### 2. Interactive Step-by-Step Coaching Mode (`🎓 Training Coach` Live Drill)
+![Interactive Step-by-Step Coaching Mode](public/screenshots/coaching_mode.png)
+*Interactive **5-Lesson Step-by-Step Coaching Mode** showing the plain-English **Coach's Live Checklist** (`1️⃣`, `2️⃣`, `3️⃣` steps lighting up green in real time), live completion progress bar (`1 / 3 Completed`), `🎾 Feed / Reset Ball` & `Next Lesson →` controls, and automatic Kitchen-line / Baseline drill positioning.*
+
+### 3. BPL Championship 2v2 Doubles Match (`0 - 0 - 2` Side-Out Scoring & Full Broadcast HUD)
 ![BPL Championship 2v2 Doubles Match](public/screenshots/doubles_match.png)
 *Full 2v2 Championship Doubles match with always-visible Top-Left & Top-Center Live Scoreboards (`0 - 0 - 2`), Floating On-Court Action Helper, Live 3D Emotion PiP cam, and distinct Indian pro athlete kits (**Arjun**: sky-blue long-sleeve performance kit; **Priya**: navy jersey & pleated court skirt; **Vikram**: black short-sleeve jersey over white long compression sleeves + headband; **Ananya**: lavender performance tee & pleated white skirt).*
 
-### 3. Athlete & Vayu Aero Carbon Paddle Close-Up Cam (`Face Cam` + Forward Ready Grip)
+### 4. Athlete & Vayu Aero Carbon Paddle Ultra-HD Close-Up Cam (`Face Cam` + 3K Carbon Weave)
 ![Athlete & Vayu Aero Carbon Paddle Close-Up Cam](public/screenshots/athlete_closeup.png)
-*Close-up portrait view of **Arjun** holding the **Vayu Aero / Bharat Pro T700 Raw Carbon-Fiber Paddle** (`BHARAT PRO` face stencil + 3D Vayu Aero diamond-chevron crest) in a natural forward continental grip (`Hand.R` origin aligned at the palm grip center), showcasing realistic athletic shoulder deltoids, layered performance apparel, wide split-step ready stance, and live facial morph targets.*
+*Ultra-HD close-up portrait of **Arjun** holding the **Vayu Aero / Bharat Pro T700 Raw Carbon-Fiber Paddle** (`1024×1024` stencil + `3K` carbon-twill normal map + clearcoat sheen) in a natural forward continental grip (`Hand.R`), showcasing `2048×2048` lifelike skin subsurface sheen, woven athletic pique jersey micro-texture, and live facial morph targets.*
 
-### 4. Kitchen Net Cam & 40-Hole Paddle Contact / Spin Lab
+### 5. Kitchen Net Cam & 40-Hole Paddle Contact / Spin Lab
 ![Kitchen Net Cam & Pro Spin Lab](public/screenshots/kitchen_angle_lab.png)
 *Sideline Non-Volley Zone ("Kitchen") camera angle alongside **Ananya (AI)** at the 7-foot Kitchen line, with the interactive **Vayu Aero Paddle & 40-Hole Spin Lab** drawer open for real-time pitch, yaw, brush spin, and crosswind tuning.*
 
-### 5. Overhead Tactical Hawkeye View
+### 6. Overhead Tactical Hawkeye View
 ![Overhead Tactical Hawkeye View](public/screenshots/overhead_tactical.png)
 *Top-down tactical view highlighting 20×44 ft 3-tone blue court geometry, `BHARAT PRO` 7-foot Non-Volley Zone ("The Kitchen") stencils, doubles footwork coverage, and 240Hz Magnus spin trajectory arcs.*
 
@@ -30,7 +34,14 @@ A realistic **3D WebGL Pickleball Simulation Game** and **Interactive USAPA / AI
 
 ## ✨ Key Highlights
 
-### 1. 100% Copyright-Free Indian Pickleball League (BPL 2025) Arena & Equipment
+### 1. Ultra-HD (4K PBR & 4x MSAA Broadcast Post-Processing) Pipeline
+- **Super-Sampled Retina / 4K Rendering (`✨ Ultra HD: ON` Toggle)**:
+  - Renders up to `2.5x` super-sampled device pixel ratio with a `HalfFloatType` **4x Hardware MSAA** `EffectComposer`, HDR `UnrealBloomPass` for overhead stadium LED floodlights, `OutputPass` ACES Filmic tone mapping, and `4096×4096` `PCFSoftShadowMap` shadows.
+- **High-Definition Physically Based Materials (`MeshPhysicalMaterial`)**:
+  - **Court & Net**: `4096 × 6144` master court canvas (`~350 DPI` crisp line stencils), `512 × 512` tangent-space silica-sand acrylic grit normal map + clearcoat sheen, and `512 × 512` braided cord net mesh.
+  - **Athletes & Equipment**: `2048 × 2048` skin texture with physical subsurface sheen, `256 × 256` repeating athletic pique jersey weave normal map, and `1024 × 1024` Vayu Aero paddle face with a `3K` carbon-twill spin-grit normal map.
+
+### 2. 100% Copyright-Free Indian Pickleball League (BPL 2025) Arena & Equipment
 - **Original Indian Sports & Tour Branding (Zero Third-Party Trademarks)**:
   - **Tournament League**: `BHARAT PICKLEBALL LEAGUE (BPL) • INDIA 2025` with a stylized Ashoka-Navy & Gold Diamond-Lotus emblem.
   - **Original Fictional Indian Sponsors**: `BHARAT PRO` (Kitchen & Paddle Face), `VAYU AERO` (3D Carbon Paddle Crest & Back Wall), `SURYA FIT INDIA`, `AGNI SPORT`, `GARUDA PRO INDIA`, `khel`, `DECCAN PRO`, `MUMBAI ARENA`, and `BHARATPICKLEBALL.IN`.
@@ -41,7 +52,7 @@ A realistic **3D WebGL Pickleball Simulation Game** and **Interactive USAPA / AI
 - **4 Subtle Facial Emotion Shape Keys & 10 Rigged Skeletal Animations**:
   - `Celebration`, `Frustration`, `Effort`, and `Surprise` morph targets + 10 NLA animations (`Idle_SplitStep`, `Run_Footwork`, `Serve_Underhand`, `Dink_Crosscourt`, `ThirdShot_Drop`, `Volley_Kitchen`, `Smash_Overhead`, `Celebrate_FistPump`, `Frustrated_Slump`, `Seated_Spectator`).
 
-### 2. Unmistakable Dual Live Scoreboards & Floating On-Court Beginner Coach
+### 3. Unmistakable Dual Live Scoreboards, Interactive Step-by-Step Coach & Laptop Controls
 - **Always-Visible Dual Scoreboards**:
   - **Top-Left BPL TV Scorebug (`#tv-scorebug`)**: Features an Indian Tricolor header bar, live serving ball indicator (`🎾`), large team score badges, `SCORE CALL 0 - 0 - 2` call box, and a real-time **Double-Bounce Rule Status Strip**.
   - **Center-Top Live Scoreboard Pill (`#center-scoreboard-pill`)**: Keeps `🇮🇳 YOU (0) — CALL: 0 - 0 - 2 — (0) VIKRAM / ANANYA (AI) 🤖` right in your line of sight at the top center of the screen.

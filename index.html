@@ -117,6 +117,9 @@
         </div>
 
         <div class="util-pills">
+          <button type="button" id="btn-toggle-hd" class="util-pill active" title="Toggle Ultra-HD 4K PBR, MSAA &amp; Broadcast Bloom Graphics">
+            ✨ Ultra HD: ON
+          </button>
           <button type="button" id="btn-toggle-pace" class="util-pill active" title="Adjust game speed for easier learning on a laptop">
             🐢 Pace: Easy (75%)
           </button>
@@ -197,28 +200,55 @@
     <div id="callout-detail" class="callout-detail">Tap Laptop Trackpad or press SPACE to Serve &amp; Hit • 2-Finger Tap or [L] = High Lob • 2-Finger Scroll = Spin!</div>
   </div>
 
-  <!-- LEFT COACH CLIPBOARD (Visible in Training Mode) -->
+  <!-- LEFT COACH CLIPBOARD (Visible in 🎓 Training Coach Mode) -->
   <aside class="hud-left">
     <section id="training-panel" class="coach-card">
       <div class="coach-header">
-        <span class="badge-tag">🎓 BPL INTERACTIVE COACH</span>
+        <span class="badge-tag">🎓 STEP-BY-STEP PICKLEBALL COACH</span>
         <span id="lesson-progress" class="progress-pill">0 / 3 Completed</span>
       </div>
-      <div class="lesson-steps">
+
+      <div class="coach-progress-track" aria-hidden="true">
+        <div id="lesson-progress-fill" class="coach-progress-fill" style="width: 0%;"></div>
+      </div>
+
+      <div class="lesson-steps" role="tablist" aria-label="5 Coaching Drills">
         <button type="button" class="step-btn active" data-lesson-idx="0">1. Kitchen</button>
         <button type="button" class="step-btn" data-lesson-idx="1">2. Serve</button>
         <button type="button" class="step-btn" data-lesson-idx="2">3. 2-Bounce</button>
         <button type="button" class="step-btn" data-lesson-idx="3">4. Scoring</button>
         <button type="button" class="step-btn" data-lesson-idx="4">5. Spin Lab</button>
       </div>
-      <h2 id="lesson-title" class="lesson-title">1. The Non-Volley Zone ("The Kitchen")</h2>
-      <div id="lesson-subtitle" class="lesson-subtitle">7-Foot No-Volley Zone &amp; Crosscourt Dink Mastery</div>
+
+      <h2 id="lesson-title" class="lesson-title">1. The Kitchen &amp; Soft Net Dink</h2>
+      <div id="lesson-subtitle" class="lesson-subtitle">Learn the 7-Foot No-Volley Zone right at the net</div>
+
       <p id="lesson-summary" class="lesson-text">
-        The 7-foot zone on each side of the net is the Non-Volley Zone (The Kitchen). You may NEVER hit a ball out of the air while touching the Kitchen or its line.
+        The light-blue 7-foot box on each side of the net is called "The Kitchen". You CANNOT hit the ball out of the air while your feet touch the Blue Kitchen — let it bounce first!
       </p>
+
+      <!-- Plain-English 1-2-3 Step-by-Step Checklist -->
+      <div class="coach-checklist-box">
+        <div class="coach-checklist-header">📋 WHAT TO DO RIGHT NOW:</div>
+        <ul id="lesson-steps-checklist" class="coach-checklist">
+          <li>1️⃣ Stand just behind the white Kitchen line (Coach placed you here!).</li>
+          <li>2️⃣ 1-Tap Trackpad or press SPACE to start the soft net rally.</li>
+          <li>3️⃣ Let Coach’s ball bounce, then tap Trackpad or [K] to land 3 soft Dinks!</li>
+        </ul>
+      </div>
+
       <div class="coach-tip-box">
-        <strong>🎯 Drill Goal:</strong>
-        <span id="lesson-tip">Let the ball bounce and hit 3 soft Crosscourt Dinks into the opponent's Kitchen!</span>
+        <strong>⌨️ Shortcut:</strong>
+        <span id="lesson-tip">1-Tap Trackpad or [2] / [K] (Soft Dink)</span>
+      </div>
+
+      <div class="coach-actions-row">
+        <button type="button" id="btn-coach-feed" class="coach-action-btn feed-btn" title="Feed or restart the practice ball for this drill">
+          🎾 Feed / Reset Ball
+        </button>
+        <button type="button" id="btn-coach-next" class="coach-action-btn next-btn" title="Advance to the next coaching lesson">
+          Next Lesson →
+        </button>
       </div>
     </section>
   </aside>
@@ -453,7 +483,7 @@
         </div>
       </div>
       <div class="controls-summary">
-        <strong>💡 Beginner Tip:</strong> Keep <strong>🐢 Pace: Easy (75%)</strong>, <strong>🤖 Smart Shot: AUTO</strong>, and <strong>🖱️ Trackpad Move: ON</strong> enabled in the top bar—then all you have to do is move your finger on the trackpad and <strong>Tap / Click</strong> when the ball comes to your side!
+        <strong>🎓 How Coaching Mode Works:</strong> Click <strong>🎓 Training Coach</strong> at the top-center to open the 5-Lesson Coach Card on the left! Pick any drill (<strong>1. Kitchen</strong>, <strong>2. Serve</strong>, <strong>3. 2-Bounce</strong>, <strong>4. Scoring</strong>, <strong>5. Spin Lab</strong>), follow the <strong>1️⃣–2️⃣–3️⃣ checklist</strong>, click <strong>🎾 Feed / Reset Ball</strong> anytime you want a fresh ball, and click <strong>Next Lesson →</strong> as you complete each goal!
       </div>
       <div class="modal-footer">
         <button type="submit" class="primary-btn">Got It — Let's Play!</button>
