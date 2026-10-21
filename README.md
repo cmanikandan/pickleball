@@ -1,6 +1,8 @@
 # 🇮🇳 Bharat Pickleball League (BPL 2025) — Ultra-HD 3D Pickleball Simulator & Interactive Coach
 
-A realistic **Ultra-HD 3D WebGL Pickleball Simulation Game** and **Interactive Step-by-Step USAPA / AIPA Rule Coach** built with **Three.js** (`4x MSAA` + `UnrealBloom` + `4K PBR Materials`), **Web Audio API**, and **Blender MCP** procedurally generated 3D Indian pro athletes, equipment, and stadium court assets — featuring **100% original, copyright-free Indian Tour branding** and **extensive Laptop Trackpad + Beginner Controls**.
+> **Built End-to-End with [Google Antigravity](https://antigravity.google/) & [Google Gemini Models](https://deepmind.google/technologies/gemini/)** — Agentic AI engineering, live [Blender MCP](https://github.com/ahujasid/blender-mcp) 3D asset authoring, 240Hz Magnus aerodynamics, and Nano Banana architecture generation.
+
+A realistic **Ultra-HD 3D WebGL Pickleball Simulation Game** and **Interactive Step-by-Step USAPA / AIPA Rule Coach** created with **[Google Antigravity](https://antigravity.google/)**, **[Google Gemini models](https://deepmind.google/technologies/gemini/)**, **Three.js** (`4x MSAA` + `UnrealBloom` + `4K PBR Materials`), **Web Audio API**, and **[Blender MCP](https://github.com/ahujasid/blender-mcp)** procedurally generated 3D Indian pro athletes, equipment, and stadium court assets — featuring **100% original, copyright-free Indian Tour branding** and **extensive Laptop Trackpad + Beginner Controls**.
 
 ---
 
@@ -187,3 +189,12 @@ pickleball/
 
 This project (including source code and original procedurally generated 3D Blender `.glb` court, equipment, and athlete assets) is licensed under the permissive [**MIT License**](LICENSE).
 
+---
+
+## 🤖 Built with Google Antigravity & Google Gemini Models
+
+This project was created end-to-end using [Google Antigravity](https://antigravity.google/) and [Google Gemini models](https://deepmind.google/technologies/gemini/):
+
+- **[Google Antigravity (antigravity.google)](https://antigravity.google/)**: Agentic AI coding environment used to architect the Three.js WebGL2 4x MSAA simulation, automate Blender 3D asset generation, synthesize 4K Bharat Pickleball League (BPL 2025) court & 3K carbon-fiber PBR textures, and verify gameplay via Retina GPU browser renders.
+- **[Google Gemini Models (deepmind.google/technologies/gemini)](https://deepmind.google/technologies/gemini/) & [Google AI for Developers (ai.google.dev)](https://ai.google.dev/)**: Multimodal reasoning, procedural 3D geometry & skeletal rigging scripting (`bpy`), 240Hz Magnus aerodynamics, Web Audio synthesis, and Ultra-HD Nano Banana architecture & key art generation.
+- **[Blender MCP (github.com/ahujasid/blender-mcp)](https://github.com/ahujasid/blender-mcp)**: Model Context Protocol integration connecting Google Antigravity and Gemini models to Blender for live 3D `.glb` asset authoring.
