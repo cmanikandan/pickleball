@@ -65,30 +65,8 @@ A realistic **Ultra-HD 3D WebGL Pickleball Simulation Game** and **Interactive S
 
 ## 🏗️ System Architecture
 
-```mermaid
-flowchart LR
-  subgraph BlenderMCP["Blender MCP Asset Pipeline"]
-    A1["player_male.glb & player_female.glb\n(18-Bone Rig + 10 NLA Anims + 4 Morphs)"]
-    A2["court.glb\n(20x44ft BPL Court + 7ft Kitchen + 34in Net)"]
-    A3["paddle.glb & pickleball.glb\n(Vayu Aero 16mm Carbon + 40-Hole Ball)"]
-  end
-
-  subgraph Engine["Three.js WebGL Simulation (src/)"]
-    M["main.js\n(BPL Arena + Trackpad Gestures + Dual Scoreboards)"]
-    P["PickleballPhysics.js\n(240Hz 40-Hole Drag + Magnus Spin + Paddle Angles)"]
-    R["PickleballRules.js\n(Kitchen NVZ + Double-Bounce + 0-0-2 Scoring)"]
-    AI["PickleballAI.js\n(Singles + Doubles Partner/Opponent Agents)"]
-    S["SoundEngine.js\n(Web Audio Carbon Pop + Squeaks + Crowd)"]
-    O["CourtOverlays.js\n(3D Kitchen Glow + Ballistic Arc + Bounce Rings)"]
-  end
-
-  BlenderMCP --> M
-  M <--> P
-  M <--> R
-  M <--> AI
-  M --> S
-  M --> O
-```
+![Bharat Pickleball League (BPL 2025) — System Architecture](public/screenshots/system_architecture.png)
+*End-to-end architecture connecting the **Blender MCP 3D Asset Pipeline** (`glTF 2.0 / .glb` rigged Indian athletes, court, carbon paddle, and 40-hole ball) and **Laptop Trackpad / Keyboard Input Layer** into the **Three.js Ultra-HD WebGL Engine** (`src/main.js` — `4x MSAA`, `4K PBR`, `HDR Bloom`, and Dual-Camera Broadcast Loop), driving the **240Hz Aerodynamic Physics Solver** (`PickleballPhysics.js`), **Multi-Agent Tactical AI** (`PickleballAI.js`), **USAPA Rules & 5-Drill Interactive Coach** (`PickleballRules.js`), **3D Holographic Overlays** (`CourtOverlays.js`), and **Web Audio Spatial Synthesis** (`SoundEngine.js`).*
 
 ---
 
@@ -183,7 +161,8 @@ pickleball/
 │   ├── pickleball.glb              # 73.66mm USAPA outdoor ball with 40 circular holes
 │   ├── player_male.glb             # Rigged male athlete (Arjun) + 9 animations + 4 emotion morphs
 │   └── player_female.glb           # Rigged female athlete (Priya) + 9 animations + 4 emotion morphs
-├── public/screenshots/             # Actual live Ultra-HD in-game WebGL screenshots
+├── public/screenshots/             # Live Ultra-HD screenshots & Nano Banana architecture diagram
+│   ├── system_architecture.png     # End-to-end 3D simulation & AI system architecture diagram
 │   ├── broadcast_view.png          # Ultra-HD broadcast center court view & scoreboards
 │   ├── coaching_mode.png           # Interactive step-by-step Coaching Mode live drill
 │   ├── doubles_match.png           # 2v2 championship doubles match in action
