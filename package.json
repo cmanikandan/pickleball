@@ -2,6 +2,7 @@
   "name": "pro-3d-pickleball-simulator",
   "version": "1.0.0",
   "description": "Realistic 3D Pickleball Simulation & Interactive USAPA Rule Trainer powered by Blender MCP & Three.js",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",

@@ -173,6 +173,7 @@ npm run build
 ```text
 pickleball/
 ├── AGENTS.md                       # AI Coding Agent, Blender MCP & Multi-Agent Architecture Guide
+├── LICENSE                         # Permissive MIT License
 ├── README.md                       # Project documentation, controls, architecture & setup
 ├── index.html                      # TV Broadcast Scorebug, Live 3D Emotion PiP & Keycap HUD
 ├── package.json                    # Scripts and dependencies (three, vite)
@@ -182,20 +183,28 @@ pickleball/
 │   ├── pickleball.glb              # 73.66mm USAPA outdoor ball with 40 circular holes
 │   ├── player_male.glb             # Rigged male athlete (Arjun) + 9 animations + 4 emotion morphs
 │   └── player_female.glb           # Rigged female athlete (Priya) + 9 animations + 4 emotion morphs
-├── public/screenshots/             # Actual live in-game WebGL screenshots
-│   ├── broadcast_view.png          # Pro broadcast center court view & USAPA coach
+├── public/screenshots/             # Actual live Ultra-HD in-game WebGL screenshots
+│   ├── broadcast_view.png          # Ultra-HD broadcast center court view & scoreboards
+│   ├── coaching_mode.png           # Interactive step-by-step Coaching Mode live drill
 │   ├── doubles_match.png           # 2v2 championship doubles match in action
-│   ├── athlete_closeup.png         # Close-up hero portrait of athlete & T700 carbon paddle
+│   ├── athlete_closeup.png         # Close-up hero portrait of athlete & 3K carbon paddle
 │   ├── kitchen_angle_lab.png       # Kitchen net cam & 40-hole paddle contact / spin lab
 │   └── overhead_tactical.png       # Overhead tactical Hawkeye view
 ├── src/
-│   ├── main.js                     # Three.js WebGL scene, outdoor stadium, PiP camera & loop
+│   ├── main.js                     # Three.js Ultra-HD WebGL scene, BPL stadium, PiP camera & loop
 │   ├── style.css                   # Broadcast UI styling & interactive keycap animations
 │   ├── ai/PickleballAI.js          # Multi-agent tactical AI (Singles, Doubles partner/opponents)
 │   ├── audio/SoundEngine.js        # Web Audio API spatial synthesis engine
 │   ├── physics/PickleballPhysics.js# 240Hz 40-hole drag, Magnus spin & paddle contact solver
-│   ├── rules/PickleballRules.js    # USAPA rule validator & 5 interactive training modules
+│   ├── rules/PickleballRules.js    # USAPA rule validator & 5 interactive coaching lessons
 │   └── ui/CourtOverlays.js         # 3D holographic court overlays & trajectory preview
 └── tests/
     └── verify_simulation.mjs       # Automated verification test suite
 ```
+
+---
+
+## 📄 License
+
+This project (including source code and original procedurally generated 3D Blender `.glb` court, equipment, and athlete assets) is licensed under the permissive [**MIT License**](LICENSE).
+
